@@ -1,20 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Course } from './course.entity';
+import { PrismaService } from '../database/prisma.service';
+import type { Course } from '../generated/prisma/client';
+
+// Frontend expects `{ id, code }`; we also expose name/type/format for richer UIs.
+function toDto(c: Course) {
+  return { id: c.id, code: c.name, name: c.name, type: c.type, format: c.format };
+}
 
 @Injectable()
 export class CourseService {
-  constructor(
-    @InjectRepository(Course)
-    private readonly courseRepository: Repository<Course>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(): Promise<Course[]> {
-    return this.courseRepository.find({ order: { id: 'ASC' } });
+  async findAll() {
+    const courses = await this.prisma.course.findMany({ orderBy: { id: 'asc' } });
+    return courses.map(toDto);
   }
 
-  async findOne(id: number): Promise<Course | null> {
-    return this.courseRepository.findOne({ where: { id } });
+  async findOne(id: string) {
+    const course = await this.prisma.course.findUnique({ where: { id } });
+    return course ? toDto(course) : null;
   }
 }

@@ -1,62 +1,42 @@
-import { api } from './client';
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface User {
-  id: number;
-  email: string;
-  name: string | null;
-  role: 'admin' | 'manager';
-  isActive: boolean;
-  isBanned: boolean;
-  createdAt: string;
-}
-
-export interface LoginResponse {
-  access_token: string;
-  user: User;
-}
+import { api, refreshAccessToken } from './client';
+import {
+  authStore,
+  type LoginRequest,
+  type LoginResponse,
+  type User,
+} from '../auth/auth-store';
 
 export const authService = {
-  async login(credentials: LoginRequest): Promise<LoginResponse> {
-    const response = await api.post<LoginResponse>('/auth/login', credentials);
-    return response.data;
+  async login(credentials: LoginRequest): Promise<User> {
+    const { data } = await api.post<LoginResponse>('/auth/login', credentials);
+    authStore.setToken(data.accessToken);
+    authStore.setUser(data.user);
+    return data.user;
   },
 
-  async getProfile(): Promise<User> {
-    const response = await api.get<User>('/auth/me');
-    return response.data;
-  },
+  /**
+   * Silent renew on app start: use the httpOnly refresh cookie to restore the
+   * access token into memory. Returns the user, or null if there's no session.
+   */
+  async restoreSession(): Promise<User | null> {
+    // No stored user means there's no session to restore — skip the request
+    // so logged-out visitors don't fire a pointless /auth/refresh (401).
+    if (!authStore.getUser()) return null;
 
-  logout() {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
+    try {
+      await refreshAccessToken();
+      return authStore.getUser();
+    } catch {
+      authStore.clear();
+      return null;
     }
   },
 
-  getStoredToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('access_token');
-    }
-    return null;
-  },
-
-  getStoredUser(): User | null {
-    if (typeof window !== 'undefined') {
-      const userStr = localStorage.getItem('user');
-      return userStr ? JSON.parse(userStr) : null;
-    }
-    return null;
-  },
-
-  storeAuthData(access_token: string, user: User) {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('access_token', access_token);
-      localStorage.setItem('user', JSON.stringify(user));
+  async logout(): Promise<void> {
+    try {
+      await api.post('/auth/logout');
+    } finally {
+      authStore.clear();
     }
   },
 };

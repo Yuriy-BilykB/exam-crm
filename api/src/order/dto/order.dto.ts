@@ -1,4 +1,12 @@
-import { IsOptional, IsInt, Min, Max, IsString, IsBoolean, IsIn } from 'class-validator';
+import {
+  IsOptional,
+  IsInt,
+  Min,
+  Max,
+  IsString,
+  IsBoolean,
+  IsIn,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class OrderListQueryDto {
@@ -16,7 +24,23 @@ export class OrderListQueryDto {
   limit?: number = 25;
 
   @IsOptional()
-  @IsIn(['id', 'name', 'surname', 'email', 'phone', 'age', 'course', 'course_format', 'course_type', 'status', 'manager', 'group', 'sum', 'already_paid', 'created_at'])
+  @IsIn([
+    'id',
+    'name',
+    'surname',
+    'email',
+    'phone',
+    'age',
+    'course',
+    'course_format',
+    'course_type',
+    'status',
+    'manager',
+    'group',
+    'sum',
+    'already_paid',
+    'created_at',
+  ])
   sortBy?: string = 'created_at';
 
   @IsOptional()
@@ -70,19 +94,21 @@ export class OrderListQueryDto {
 }
 
 export class UpdateOrderDto {
-  name?: string;
-  surname?: string;
-  email?: string;
-  phone?: string;
-  age?: number;
-  course_id?: number;
-  format_id?: number;
-  type_id?: number;
-  status_id?: number;
-  manager_id?: number | null;
-  group_id?: number | null;
-  sum?: number;
-  already_paid?: number;
-  utm?: string;
-  message?: string;
+  // Client fields
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsString() surname?: string;
+  @IsOptional() @IsString() email?: string;
+  @IsOptional() @IsString() phone?: string;
+  @IsOptional() @Type(() => Number) @IsInt() age?: number;
+
+  // Application fields. course/manager/group ids are real cuid strings;
+  // status_id is a synthetic reference id (see common/reference.ts).
+  @IsOptional() @IsString() course_id?: string | null;
+  @IsOptional() @Type(() => Number) @IsInt() status_id?: number;
+  @IsOptional() @IsString() manager_id?: string | null;
+  @IsOptional() @IsString() group_id?: string | null;
+  @IsOptional() @Type(() => Number) @IsInt() sum?: number;
+  @IsOptional() @Type(() => Number) @IsInt() already_paid?: number;
+  @IsOptional() @IsString() utm?: string;
+  @IsOptional() @IsString() message?: string;
 }

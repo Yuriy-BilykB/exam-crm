@@ -1,26 +1,64 @@
-import { Controller, Post, Body, Get, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto } from './dto/auth.dto';
+import { LoginDto, SetPasswordDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { Request } from 'express';
+import type { Request, Response } from 'express';
+import {
+  refreshCookieKey,
+  refreshCookieOptions,
+} from 'src/shared/cookie-options';
+import { Cookies } from '../common/decorators/cookies.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { refreshToken, ...rest } = await this.authService.login(dto);
+    res.cookie(refreshCookieKey, refreshToken, refreshCookieOptions);
+    return rest;
+  }
+
+  @Post('refresh')
+  async refresh(
+    @Cookies(refreshCookieKey) refreshCookie: string | undefined,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { refreshToken, ...rest } =
+      await this.authService.refreshTokens(refreshCookie);
+    res.cookie(refreshCookieKey, refreshToken, refreshCookieOptions);
+    return rest;
+  }
+
+  @Post('logout')
+  logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie(refreshCookieKey, {
+      ...refreshCookieOptions,
+      maxAge: undefined,
+    });
+    return { message: 'Logged out' };
   }
 
   @Post('set-password')
-  setPassword(@Body() body: { token: string; password: string }) {
-    return this.authService.setPassword(body.token, body.password);
+  setPassword(@Body() dto: SetPasswordDto) {
+    return this.authService.setPassword(dto);
   }
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  me(@Req() req: Request & { user: { id: number; email: string; role: string } }) {
+  me(@Req() req: Request & { user: { id: string; role: string } }) {
     return this.authService.getProfile(req.user.id);
   }
 }

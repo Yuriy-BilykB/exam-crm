@@ -1,47 +1,54 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Comment } from './comment.entity';
-import { OrderService } from '../order/order.service';
-import { StatusService } from '../status/status.service';
+import { PrismaService } from '../database/prisma.service';
+import { ApplicationStatus } from '../common/enums';
+import type { Prisma } from '../generated/prisma/client';
 
 @Injectable()
 export class CommentService {
-  constructor(
-    @InjectRepository(Comment)
-    private readonly commentRepository: Repository<Comment>,
-    private readonly orderService: OrderService,
-    private readonly statusService: StatusService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async addComment(orderId: number, userId: number, commentText: string): Promise<Comment> {
-    const order = await this.orderService.findOne(orderId);
-    if (order.managerId != null && order.managerId !== userId) {
-      throw new ForbiddenException('You can only comment on orders without manager or assigned to you');
+  async addComment(applicationId: string, userId: string, text: string) {
+    const app = await this.prisma.application.findUnique({ where: { id: applicationId } });
+    if (!app) throw new NotFoundException('Order not found');
+    if (app.managerId != null && app.managerId !== userId) {
+      throw new ForbiddenException(
+        'You can only comment on orders without a manager or assigned to you',
+      );
     }
-    const statusInWork = await this.statusService.findByName('In work');
-    const statusNew = await this.statusService.findByName('New');
-    const shouldSetInWork =
-      statusInWork &&
-      (order.statusId == null || order.statusId === statusNew?.id);
-    if (shouldSetInWork && statusInWork) {
-      await this.orderService.update(orderId, { status_id: statusInWork.id, manager_id: userId }, userId);
-    } else if (!order.managerId) {
-      await this.orderService.update(orderId, { manager_id: userId }, userId);
+
+    // First touch by a manager: claim the order and move New -> In work.
+    const data: Prisma.ApplicationUpdateInput = {};
+    if (app.managerId == null) data.manager = { connect: { id: userId } };
+    if (app.status === ApplicationStatus.New) data.status = ApplicationStatus.InWork;
+    if (Object.keys(data).length) {
+      await this.prisma.application.update({ where: { id: applicationId }, data });
     }
-    const comment = this.commentRepository.create({
-      orderId,
-      userId,
-      comment: commentText,
+
+    const comment = await this.prisma.comment.create({
+      data: { applicationId, userId, text },
     });
-    return this.commentRepository.save(comment);
+    return {
+      id: comment.id,
+      orderId: comment.applicationId,
+      userId: comment.userId,
+      comment: comment.text,
+      createdAt: comment.createdAt,
+    };
   }
 
-  async findByOrder(orderId: number): Promise<Comment[]> {
-    return this.commentRepository.find({
-      where: { orderId },
-      relations: ['user'],
-      order: { createdAt: 'ASC' },
+  async findByOrder(applicationId: string) {
+    const comments = await this.prisma.comment.findMany({
+      where: { applicationId },
+      include: { user: true },
+      orderBy: { createdAt: 'asc' },
     });
+    return comments.map((c) => ({
+      id: c.id,
+      orderId: c.applicationId,
+      userId: c.userId,
+      comment: c.text,
+      createdAt: c.createdAt,
+      user: c.user ? { id: c.user.id, name: c.user.name, email: c.user.email } : undefined,
+    }));
   }
 }

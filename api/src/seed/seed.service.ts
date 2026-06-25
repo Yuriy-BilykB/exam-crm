@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { UserService } from '../user/user.service';
-import { UserRole } from '../user/user.entity';
+import { UserRole } from '../common/enums';
 
 const adminEmail = 'admin@gmail.com';
 const adminPassword = 'admin';
@@ -12,7 +12,7 @@ export class SeedService implements OnModuleInit {
   async onModuleInit() {
     const existing = await this.userService.findByEmail(adminEmail);
     if (existing) {
-      // Завжди підтягуємо пароль адміна до "admin", щоб логін гарантовано працював
+      // Always reset the admin password to "admin" so local login is guaranteed to work.
       await this.userService.update(existing.id, { password: adminPassword, isActive: true });
       return;
     }

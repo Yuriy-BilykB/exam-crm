@@ -1,77 +1,90 @@
 import { Injectable, ConflictException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { User, UserRole } from './user.entity';
+import { PrismaService } from '../database/prisma.service';
+import { UserRole } from '../common/enums';
+import type { User } from '../generated/prisma/client';
 import { CreateUserDto, CreateManagerDto, UpdateUserDto } from './dto/user.dto';
+
+export type SafeUser = Omit<User, 'password'>;
 
 @Injectable()
 export class UserService {
-  constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateUserDto): Promise<User> {
-    const existing = await this.findByEmail(dto.email);
-    if (existing) throw new ConflictException('User with this email already exists');
-    const hashed = await bcrypt.hash(dto.password, 10);
-    const user = this.userRepository.create({ ...dto, password: hashed });
-    return this.userRepository.save(user);
+    const user = await this.findByEmail(dto.email);
+    if (user) {
+      throw new ConflictException('User with this email already exists');
+    }
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    return this.prisma.user.create({
+      data: {
+        ...dto,
+        password: hashedPassword,
+      },
+    });
   }
 
-  /** Create manager (inactive, no password until activation) */
+  /** Create manager (inactive, no usable password until activation) */
   async createManager(dto: CreateManagerDto): Promise<User> {
-    const existing = await this.findByEmail(dto.email);
-    if (existing) throw new ConflictException('User with this email already exists');
-    const placeholderHash = await bcrypt.hash(Math.random().toString(36), 10);
-    const user = this.userRepository.create({
-      email: dto.email,
-      name: dto.name,
-      password: placeholderHash,
-      role: UserRole.MANAGER,
-      isActive: false,
+    const user = await this.findByEmail(dto.email);
+    if (user) {
+      throw new ConflictException('User with this email already exists');
+    }
+    return this.prisma.user.create({
+      data: {
+        email: dto.email,
+        name: dto.name,
+        surname: dto.surname,
+        role: UserRole.MANAGER,
+        isActive: false,
+      },
     });
-    return this.userRepository.save(user);
   }
 
   async findAll(): Promise<User[]> {
-    return this.userRepository.find({ order: { id: 'DESC' } });
+    return this.prisma.user.findMany({ orderBy: { id: 'desc' } });
   }
 
-  async findManagersPaginated(page: number, limit: number): Promise<{ data: User[]; total: number }> {
-    const [data, total] = await this.userRepository.findAndCount({
-      where: { role: UserRole.MANAGER },
-      order: { id: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async findManagersPaginated(
+    page: number,
+    limit: number,
+  ): Promise<{ data: User[]; total: number }> {
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where: { role: UserRole.MANAGER },
+        orderBy: { id: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.user.count({ where: { role: UserRole.MANAGER } }),
+    ]);
     return { data, total };
   }
 
-  async findOne(id: number): Promise<User | null> {
-    return this.userRepository.findOne({ where: { id } });
+  async findOne(id: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { id } });
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.userRepository.findOne({ where: { email } });
+    return this.prisma.user.findUnique({ where: { email } });
   }
 
-  async update(id: number, dto: UpdateUserDto): Promise<User | null> {
+  async update(id: string, dto: UpdateUserDto): Promise<User | null> {
+    const data: Record<string, unknown> = { ...dto };
     if (dto.password) {
-      (dto as Record<string, unknown>).password = await bcrypt.hash(dto.password, 10);
+      data.password = await bcrypt.hash(dto.password, 10);
     }
-    await this.userRepository.update(id, dto as Partial<User>);
-    return this.findOne(id);
+    return this.prisma.user.update({ where: { id }, data });
   }
 
-  async remove(id: number): Promise<void> {
-    await this.userRepository.delete(id);
+  async remove(id: string): Promise<void> {
+    await this.prisma.user.delete({ where: { id } });
   }
 
-  /** Exclude password from user for response */
-  toSafeUser(user: User): Omit<User, 'password'> {
-    const { password: _, ...rest } = user;
+  /** Exclude password from a user for responses */
+  toSafeUser(user: User): SafeUser {
+    const { password: _password, ...rest } = user;
     return rest;
   }
 }

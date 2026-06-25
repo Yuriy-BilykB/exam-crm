@@ -1,10 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { OrderDetail } from '@/services/orders.service';
-import ordersService from '@/services/orders.service';
-import referenceService from '@/lib/api/reference.service';
-import type { Course, CourseFormat, CourseType, Status, Group } from '@/lib/api/reference.service';
+import { getApiErrorMessage } from '@/lib/api/errors';
+import {
+  useCourses,
+  useCourseFormats,
+  useCourseTypes,
+  useStatuses,
+  useGroups,
+  useCreateGroup,
+} from '@/hooks/reference/useReferences';
+import { useOrderActions } from '@/hooks/orders/useOrderActions';
 
 interface EditOrderModalProps {
   order: OrderDetail | null;
@@ -12,110 +19,81 @@ interface EditOrderModalProps {
   onSaved: (updated: OrderDetail) => void;
 }
 
+const TEXT_FIELDS = ['name', 'surname', 'email', 'phone'] as const;
+const INT_FIELDS = ['age', 'course_id', 'format_id', 'type_id', 'status_id', 'sum', 'already_paid'] as const;
+
+const initialState = {
+  name: '', surname: '', email: '', phone: '', age: '',
+  course_id: '', format_id: '', type_id: '', status_id: '', group_id: '',
+  sum: '', already_paid: '',
+};
+
+// Build the form state from an order. The modal is mounted fresh each time it
+// opens, so this runs once as the initial state — no syncing effect needed.
+function buildFormState(order: OrderDetail | null) {
+  if (!order) return initialState;
+  return {
+    name: order.name ?? '',
+    surname: order.surname ?? '',
+    email: order.email ?? '',
+    phone: order.phone ?? '',
+    age: order.age?.toString() ?? '',
+    course_id: order.course?.id.toString() ?? '',
+    format_id: order.format?.id.toString() ?? '',
+    type_id: order.type?.id.toString() ?? '',
+    status_id: order.status?.id.toString() ?? '',
+    group_id: order.group?.id.toString() ?? '',
+    sum: order.sum?.toString() ?? '',
+    already_paid: order.alreadyPaid?.toString() ?? '',
+  };
+}
+
 export default function EditOrderModal({ order, onClose, onSaved }: EditOrderModalProps) {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [formats, setFormats] = useState<CourseFormat[]>([]);
-  const [types, setTypes] = useState<CourseType[]>([]);
-  const [statuses, setStatuses] = useState<Status[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
+  const { data: courses = [] } = useCourses();
+  const { data: formats = [] } = useCourseFormats();
+  const { data: types = [] } = useCourseTypes();
+  const { data: statuses = [] } = useStatuses();
+  const { data: groups = [] } = useGroups();
+
+  const createGroup = useCreateGroup();
+  const { updateOrder } = useOrderActions();
+
+  const [form, setForm] = useState(() => buildFormState(order));
   const [newGroupName, setNewGroupName] = useState('');
-  const [addingGroup, setAddingGroup] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [form, setForm] = useState({
-    name: '',
-    surname: '',
-    email: '',
-    phone: '',
-    age: '',
-    course_id: '',
-    format_id: '',
-    type_id: '',
-    status_id: '',
-    group_id: '',
-    sum: '',
-    already_paid: '',
-  });
-
-  useEffect(() => {
-    if (!order) return;
-    setForm({
-      name: order.name ?? '',
-      surname: order.surname ?? '',
-      email: order.email ?? '',
-      phone: order.phone ?? '',
-      age: order.age != null ? String(order.age) : '',
-      course_id: order.course?.id != null ? String(order.course.id) : '',
-      format_id: order.format?.id != null ? String(order.format.id) : '',
-      type_id: order.type?.id != null ? String(order.type.id) : '',
-      status_id: order.status?.id != null ? String(order.status.id) : '',
-      group_id: order.group?.id != null ? String(order.group.id) : '',
-      sum: order.sum != null ? String(order.sum) : '',
-      already_paid: order.alreadyPaid != null ? String(order.alreadyPaid) : '',
-    });
-  }, [order]);
-
-  useEffect(() => {
-    Promise.all([
-      referenceService.getCourses(),
-      referenceService.getCourseFormats(),
-      referenceService.getCourseTypes(),
-      referenceService.getStatuses(),
-      referenceService.getGroups(),
-    ]).then(([c, f, t, s, g]) => {
-      setCourses(c);
-      setFormats(f);
-      setTypes(t);
-      setStatuses(s);
-      setGroups(g);
-    });
-  }, []);
 
   const handleAddGroup = async () => {
     const name = newGroupName.trim();
-    if (!name || addingGroup) return;
-    setAddingGroup(true);
+    if (!name || createGroup.isPending) return;
     setError(null);
     try {
-      const group = await referenceService.createGroup(name);
-      setGroups((prev) => [...prev, group]);
+      const group = await createGroup.mutateAsync(name);
       setForm((prev) => ({ ...prev, group_id: String(group.id) }));
       setNewGroupName('');
-    } catch (e: unknown) {
-      setError((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to add group');
-    } finally {
-      setAddingGroup(false);
+    } catch (e) {
+      setError(getApiErrorMessage(e, 'Failed to add group'));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!order || saving) return;
-    setSaving(true);
+    if (!order || updateOrder.isPending) return;
     setError(null);
     try {
       const payload: Record<string, unknown> = {};
-      if (form.name !== '') payload.name = form.name;
-      if (form.surname !== '') payload.surname = form.surname;
-      if (form.email !== '') payload.email = form.email;
-      if (form.phone !== '') payload.phone = form.phone;
-      if (form.age !== '') payload.age = parseInt(form.age, 10);
-      if (form.course_id !== '') payload.course_id = parseInt(form.course_id, 10);
-      if (form.format_id !== '') payload.format_id = parseInt(form.format_id, 10);
-      if (form.type_id !== '') payload.type_id = parseInt(form.type_id, 10);
-      if (form.status_id !== '') payload.status_id = parseInt(form.status_id, 10);
-      if (form.group_id !== '') payload.group_id = parseInt(form.group_id, 10);
-      if (form.group_id === '') payload.group_id = null;
-      if (form.sum !== '') payload.sum = parseInt(form.sum, 10);
-      if (form.already_paid !== '') payload.already_paid = parseInt(form.already_paid, 10);
-      const updated = await ordersService.updateOrder(order.id, payload);
+      for (const key of TEXT_FIELDS) {
+        if (form[key] !== '') payload[key] = form[key];
+      }
+      for (const key of INT_FIELDS) {
+        if (form[key] !== '') payload[key] = parseInt(form[key], 10);
+      }
+      payload.group_id = form.group_id !== '' ? parseInt(form.group_id, 10) : null;
+
+      const updated = await updateOrder.mutateAsync({ id: order.id, data: payload });
       onSaved(updated);
       onClose();
-    } catch (e: unknown) {
-      setError((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to update');
-    } finally {
-      setSaving(false);
+    } catch (e) {
+      setError(getApiErrorMessage(e, 'Failed to update'));
     }
   };
 
@@ -162,7 +140,7 @@ export default function EditOrderModal({ order, onClose, onSaved }: EditOrderMod
                     <button
                       type="button"
                       onClick={handleAddGroup}
-                      disabled={addingGroup || !newGroupName.trim()}
+                      disabled={createGroup.isPending || !newGroupName.trim()}
                       className="px-3 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600 disabled:opacity-50"
                     >
                       ADD GROUP
@@ -298,10 +276,10 @@ export default function EditOrderModal({ order, onClose, onSaved }: EditOrderMod
               </button>
               <button
                 type="submit"
-                disabled={saving}
+                disabled={updateOrder.isPending}
                 className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
               >
-                {saving ? 'Saving...' : 'SUBMIT'}
+                {updateOrder.isPending ? 'Saving...' : 'SUBMIT'}
               </button>
             </div>
           </form>

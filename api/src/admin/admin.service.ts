@@ -1,21 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { UserService } from '../user/user.service';
-import { AuthService } from '../auth/auth.service';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Order } from '../order/order.entity';
+import { TokenService } from '../token/token.service';
+import { PrismaService } from '../database/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { CreateManagerDto } from '../user/dto/user.dto';
-import { UserRole } from '../user/user.entity';
-
-const DEFAULT_ACTIVATION_BASE_URL = 'http://localhost:3001';
+import { UserRole } from '../common/enums';
+import { statusRef } from '../common/reference';
 
 @Injectable()
 export class AdminService {
   constructor(
     private readonly userService: UserService,
-    private readonly authService: AuthService,
-    @InjectRepository(Order)
-    private readonly orderRepository: Repository<Order>,
+    private readonly tokenService: TokenService,
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
   ) {}
 
   async createManager(dto: CreateManagerDto) {
@@ -24,68 +22,92 @@ export class AdminService {
   }
 
   async getManagersPaginated(page: number, limit: number) {
-    const { data, total } = await this.userService.findManagersPaginated(page, limit);
+    const { data, total } = await this.userService.findManagersPaginated(
+      page,
+      limit,
+    );
     return {
       data: data.map((u) => this.userService.toSafeUser(u)),
       total,
     };
   }
 
-  getActivationLink(userId: number, tokenType: 'activate' | 'recovery'): string {
-    const baseUrl = process.env.FRONTEND_URL || process.env.ACTIVATION_BASE_URL || DEFAULT_ACTIVATION_BASE_URL;
-    const token = this.authService.generateActionToken(userId, tokenType);
+  getActivationLink(
+    userId: string,
+    tokenType: 'activate' | 'recovery',
+  ): string {
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const token = this.tokenService.generateActionToken(userId, tokenType);
     return `${baseUrl.replace(/\/$/, '')}/${tokenType}/${token}`;
   }
 
-  async activateManager(userId: number): Promise<{ link: string }> {
+  async activateManager(
+    userId: string,
+  ): Promise<{ link: string; emailSent: boolean }> {
     const user = await this.userService.findOne(userId);
-    if (!user) throw new NotFoundException('User not found');
-    if (user.role !== UserRole.MANAGER) throw new NotFoundException('Not a manager');
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (user.role !== UserRole.MANAGER) {
+      throw new NotFoundException('Not a manager');
+    }
     const link = this.getActivationLink(userId, 'activate');
-    return { link };
+    const emailSent = await this.mailService.sendActionLink(
+      user.email,
+      link,
+      'activate',
+    );
+    return { link, emailSent };
   }
 
-  async recoveryPassword(userId: number): Promise<{ link: string }> {
+  async recoveryPassword(
+    userId: string,
+  ): Promise<{ link: string; emailSent: boolean }> {
     const user = await this.userService.findOne(userId);
     if (!user) throw new NotFoundException('User not found');
     const link = this.getActivationLink(userId, 'recovery');
-    return { link };
+    const emailSent = await this.mailService.sendActionLink(
+      user.email,
+      link,
+      'recovery',
+    );
+    return { link, emailSent };
   }
 
-  async banUser(userId: number) {
+  async banUser(userId: string) {
     const user = await this.userService.update(userId, { isBanned: true });
     return user ? this.userService.toSafeUser(user) : null;
   }
 
-  async unbanUser(userId: number) {
+  async unbanUser(userId: string) {
     const user = await this.userService.update(userId, { isBanned: false });
     return user ? this.userService.toSafeUser(user) : null;
   }
 
-  /** Stats: count orders by status (all orders) */
+  /** Stats: count all applications grouped by status */
   async getStatsByStatus(): Promise<{ statusName: string; count: number }[]> {
-    const raw = await this.orderRepository
-      .createQueryBuilder('order')
-      .leftJoin('order.status', 'status')
-      .select('status.name', 'statusName')
-      .addSelect('COUNT(order.id)', 'count')
-      .groupBy('status.id')
-      .addGroupBy('status.name')
-      .getRawMany();
-    return raw.map((r) => ({ statusName: r.statusName ?? 'No status', count: Number(r.count) }));
+    const grouped = await this.prisma.application.groupBy({
+      by: ['status'],
+      _count: { _all: true },
+    });
+    return grouped.map((g) => ({
+      statusName: statusRef(g.status)?.name ?? 'No status',
+      count: g._count._all,
+    }));
   }
 
-  /** Stats for one manager: orders count by status */
-  async getManagerStats(managerId: number): Promise<{ statusName: string; count: number }[]> {
-    const raw = await this.orderRepository
-      .createQueryBuilder('order')
-      .leftJoin('order.status', 'status')
-      .where('order.manager_id = :managerId', { managerId })
-      .select('status.name', 'statusName')
-      .addSelect('COUNT(order.id)', 'count')
-      .groupBy('status.id')
-      .addGroupBy('status.name')
-      .getRawMany();
-    return raw.map((r) => ({ statusName: r.statusName ?? 'No status', count: Number(r.count) }));
+  /** Stats for one manager: applications count by status */
+  async getManagerStats(
+    managerId: string,
+  ): Promise<{ statusName: string; count: number }[]> {
+    const grouped = await this.prisma.application.groupBy({
+      by: ['status'],
+      where: { managerId },
+      _count: { _all: true },
+    });
+    return grouped.map((g) => ({
+      statusName: statusRef(g.status)?.name ?? 'No status',
+      count: g._count._all,
+    }));
   }
 }

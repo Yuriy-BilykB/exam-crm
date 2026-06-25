@@ -1,132 +1,260 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Order } from './order.entity';
-import { UpdateOrderDto } from './dto/order.dto';
-import { OrderListQueryDto } from './dto/order.dto';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
+import { PrismaService } from '../database/prisma.service';
+import { UpdateOrderDto, OrderListQueryDto } from './dto/order.dto';
+import {
+  statusRef,
+  statusValueById,
+  formatRef,
+  formatValueById,
+  typeRef,
+  typeValueById,
+} from '../common/reference';
+import type { Prisma } from '../generated/prisma/client';
+
+const LIST_INCLUDE = {
+  client: true,
+  course: true,
+  manager: true,
+  group: true,
+} satisfies Prisma.ApplicationInclude;
+
+type ApplicationWithRelations = Prisma.ApplicationGetPayload<{
+  include: typeof LIST_INCLUDE;
+}>;
 
 @Injectable()
 export class OrderService {
-  constructor(
-    @InjectRepository(Order)
-    private readonly orderRepository: Repository<Order>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(
-    query: OrderListQueryDto,
-    currentUserId: number,
-  ): Promise<{ data: Order[]; total: number }> {
-    const {
-      page = 1,
-      limit = 25,
-      sortBy = 'created_at',
-      sortOrder = 'DESC',
-      my_orders = false,
-      name,
-      surname,
-      email,
-      phone,
-      status_id,
-      course_id,
-      format_id,
-      type_id,
-      manager_id,
-      group_id,
-    } = query;
-
-    const qb = this.orderRepository
-      .createQueryBuilder('order')
-      .leftJoinAndSelect('order.course', 'course')
-      .leftJoinAndSelect('order.format', 'format')
-      .leftJoinAndSelect('order.type', 'type')
-      .leftJoinAndSelect('order.status', 'status')
-      .leftJoinAndSelect('order.manager', 'manager')
-      .leftJoinAndSelect('order.group', 'group');
-
-    if (my_orders) {
-      qb.andWhere('order.manager_id = :managerId', { managerId: currentUserId });
-    }
-    if (name) qb.andWhere('order.name LIKE :name', { name: `%${name}%` });
-    if (surname) qb.andWhere('order.surname LIKE :surname', { surname: `%${surname}%` });
-    if (email) qb.andWhere('order.email LIKE :email', { email: `%${email}%` });
-    if (phone) qb.andWhere('order.phone LIKE :phone', { phone: `%${phone}%` });
-    if (status_id) qb.andWhere('order.status_id = :statusId', { statusId: status_id });
-    if (course_id) qb.andWhere('order.course_id = :courseId', { courseId: course_id });
-    if (format_id) qb.andWhere('order.format_id = :formatId', { formatId: format_id });
-    if (type_id) qb.andWhere('order.type_id = :typeId', { typeId: type_id });
-    if (manager_id) qb.andWhere('order.manager_id = :managerId', { managerId: manager_id });
-    if (group_id) qb.andWhere('order.group_id = :groupId', { groupId: group_id });
-
-    const sortColumn = this.mapSortColumn(sortBy);
-    qb.orderBy(sortColumn, sortOrder);
-
-    const [data, total] = await qb
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
-
-    return { data, total };
-  }
-
-  private mapSortColumn(sortBy: string): string {
-    const map: Record<string, string> = {
-      id: 'order.id',
-      name: 'order.name',
-      surname: 'order.surname',
-      email: 'order.email',
-      phone: 'order.phone',
-      age: 'order.age',
-      course: 'course.code',
-      course_format: 'format.name',
-      course_type: 'type.name',
-      status: 'status.name',
-      manager: 'manager.name',
-      group: 'group.name',
-      sum: 'order.sum',
-      already_paid: 'order.alreadyPaid',
-      created_at: 'order.created_at',
+  /** Map an Application (with relations) into the legacy order shape the frontend consumes. */
+  private toOrderDto(app: ApplicationWithRelations) {
+    const { client, course, manager, group } = app;
+    const fmt = course ? formatRef(course.format) : null;
+    const typ = course ? typeRef(course.type) : null;
+    const st = statusRef(app.status);
+    return {
+      id: app.id,
+      name: client?.name ?? null,
+      surname: client?.surname ?? null,
+      email: client?.email ?? null,
+      phone: client?.phone ?? null,
+      age: client?.age ?? null,
+      course: course ? { id: course.id, code: course.name } : null,
+      format: fmt ? { id: fmt.id, name: fmt.name } : null,
+      type: typ ? { id: typ.id, name: typ.name } : null,
+      status: st ? { id: st.id, name: st.name } : null,
+      manager: manager ? { id: manager.id, name: manager.name } : null,
+      group: group ? { id: group.id, name: group.name } : null,
+      sum: app.sum,
+      alreadyPaid: app.alreadyPaid,
+      utm: app.utm,
+      message: app.message,
+      created_at: app.createdAt,
     };
-    return map[sortBy] || 'order.created_at';
   }
 
-  async findOne(id: number): Promise<Order> {
-    const order = await this.orderRepository.findOne({
-      where: { id },
-      relations: ['course', 'format', 'type', 'status', 'manager', 'group', 'comments', 'comments.user'],
-    });
-    if (!order) throw new NotFoundException('Order not found');
-    return order;
+  private buildWhere(
+    query: OrderListQueryDto,
+    currentUserId: string,
+  ): Prisma.ApplicationWhereInput {
+    const where: Prisma.ApplicationWhereInput = {};
+    const client: Prisma.ClientWhereInput = {};
+    const course: Prisma.CourseWhereInput = {};
+
+    if (query.my_orders) where.managerId = currentUserId;
+    if (query.name) client.name = { contains: query.name };
+    if (query.surname) client.surname = { contains: query.surname };
+    if (query.email) client.email = { contains: query.email };
+    if (query.phone) client.phone = { contains: query.phone };
+    if (Object.keys(client).length) where.client = client;
+
+    const status = statusValueById(query.status_id);
+    if (status) where.status = status;
+    if (query.course_id) where.courseId = query.course_id;
+
+    const format = formatValueById(query.format_id);
+    if (format) course.format = format;
+    const type = typeValueById(query.type_id);
+    if (type) course.type = type;
+    if (Object.keys(course).length) where.course = course;
+
+    if (query.manager_id) where.managerId = query.manager_id;
+    if (query.group_id) where.groupId = query.group_id;
+
+    return where;
   }
 
-  async update(id: number, dto: UpdateOrderDto, currentUserId: number): Promise<Order> {
-    const order = await this.orderRepository.findOne({ where: { id }, relations: ['manager'] });
-    if (!order) throw new NotFoundException('Order not found');
-    if (order.managerId != null && order.managerId !== currentUserId) {
-      throw new ForbiddenException('You can only edit orders without manager or assigned to you');
+  private buildOrderBy(
+    sortBy: string,
+    sortOrder: 'asc' | 'desc',
+  ): Prisma.ApplicationOrderByWithRelationInput {
+    switch (sortBy) {
+      case 'id':
+        return { id: sortOrder };
+      case 'name':
+        return { client: { name: sortOrder } };
+      case 'surname':
+        return { client: { surname: sortOrder } };
+      case 'email':
+        return { client: { email: sortOrder } };
+      case 'phone':
+        return { client: { phone: sortOrder } };
+      case 'age':
+        return { client: { age: sortOrder } };
+      case 'course':
+        return { course: { name: sortOrder } };
+      case 'course_format':
+        return { course: { format: sortOrder } };
+      case 'course_type':
+        return { course: { type: sortOrder } };
+      case 'status':
+        return { status: sortOrder };
+      case 'manager':
+        return { manager: { name: sortOrder } };
+      case 'group':
+        return { group: { name: sortOrder } };
+      case 'sum':
+        return { sum: sortOrder };
+      case 'already_paid':
+        return { alreadyPaid: sortOrder };
+      default:
+        return { createdAt: sortOrder };
     }
-    const updatePayload: Partial<Order> = {};
-    if (dto.name !== undefined) updatePayload.name = dto.name;
-    if (dto.surname !== undefined) updatePayload.surname = dto.surname;
-    if (dto.email !== undefined) updatePayload.email = dto.email;
-    if (dto.phone !== undefined) updatePayload.phone = dto.phone;
-    if (dto.age !== undefined) updatePayload.age = dto.age;
-    if (dto.course_id !== undefined) updatePayload.courseId = dto.course_id;
-    if (dto.format_id !== undefined) updatePayload.formatId = dto.format_id;
-    if (dto.type_id !== undefined) updatePayload.typeId = dto.type_id;
-    if (dto.status_id !== undefined) updatePayload.statusId = dto.status_id;
-    if (dto.manager_id !== undefined) updatePayload.managerId = dto.manager_id;
-    if (dto.group_id !== undefined) updatePayload.groupId = dto.group_id;
-    if (dto.sum !== undefined) updatePayload.sum = dto.sum;
-    if (dto.already_paid !== undefined) updatePayload.alreadyPaid = dto.already_paid;
-    if (dto.utm !== undefined) updatePayload.utm = dto.utm;
-    if (dto.message !== undefined) updatePayload.message = dto.message;
-    await this.orderRepository.update(id, updatePayload);
+  }
+
+  async findAll(query: OrderListQueryDto, currentUserId: string) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 25;
+    const sortOrder: 'asc' | 'desc' =
+      query.sortOrder === 'ASC' ? 'asc' : 'desc';
+    const where = this.buildWhere(query, currentUserId);
+    const orderBy = this.buildOrderBy(query.sortBy ?? 'created_at', sortOrder);
+
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.application.findMany({
+        where,
+        include: LIST_INCLUDE,
+        orderBy,
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.application.count({ where }),
+    ]);
+
+    return { data: rows.map((row) => this.toOrderDto(row)), total };
+  }
+
+  async findOne(id: string) {
+    const application = await this.prisma.application.findUnique({
+      where: { id },
+      include: {
+        ...LIST_INCLUDE,
+        comments: { include: { user: true }, orderBy: { createdAt: 'asc' } },
+      },
+    });
+    if (!application) throw new NotFoundException('Order not found');
+    return {
+      ...this.toOrderDto(application),
+      comments: application.comments.map((comment) => ({
+        id: comment.id,
+        orderId: comment.applicationId,
+        userId: comment.userId,
+        comment: comment.text,
+        createdAt: comment.createdAt,
+        user: comment.user
+          ? {
+              id: comment.user.id,
+              name: comment.user.name,
+              email: comment.user.email,
+            }
+          : undefined,
+      })),
+    };
+  }
+
+  /** Raw application (for permission checks / comment service). */
+  async getRaw(id: string) {
+    const application = await this.prisma.application.findUnique({
+      where: { id },
+    });
+    if (!application) throw new NotFoundException('Order not found');
+    return application;
+  }
+
+  async update(id: string, dto: UpdateOrderDto, currentUserId: string) {
+    const application = await this.prisma.application.findUnique({
+      where: { id },
+    });
+    if (!application) throw new NotFoundException('Order not found');
+    if (
+      application.managerId != null &&
+      application.managerId !== currentUserId
+    ) {
+      throw new ForbiddenException(
+        'You can only edit orders without a manager or assigned to you',
+      );
+    }
+
+    const clientData: Prisma.ClientUpdateInput = {};
+    if (dto.name) clientData.name = dto.name;
+    if (dto.surname) clientData.surname = dto.surname;
+    if (dto.email) clientData.email = dto.email;
+    if (dto.phone) clientData.phone = dto.phone;
+    if (dto.age) clientData.age = dto.age;
+    if (Object.keys(clientData).length) {
+      await this.prisma.client.update({
+        where: { id: application.clientId },
+        data: clientData,
+      });
+    }
+
+    const appData: Prisma.ApplicationUpdateInput = {};
+    if (dto.course_id !== undefined) {
+      appData.course =
+        dto.course_id == null
+          ? { disconnect: true }
+          : { connect: { id: dto.course_id } };
+    }
+    if (dto.status_id !== undefined) {
+      const status = statusValueById(dto.status_id);
+      if (status) appData.status = status;
+    }
+    if (dto.manager_id !== undefined) {
+      appData.manager =
+        dto.manager_id == null
+          ? { disconnect: true }
+          : { connect: { id: dto.manager_id } };
+    }
+    if (dto.group_id !== undefined) {
+      appData.group =
+        dto.group_id == null
+          ? { disconnect: true }
+          : { connect: { id: dto.group_id } };
+    }
+    if (dto.sum !== undefined) appData.sum = dto.sum;
+    if (dto.already_paid !== undefined) appData.alreadyPaid = dto.already_paid;
+    if (dto.utm !== undefined) appData.utm = dto.utm;
+    if (dto.message !== undefined) appData.message = dto.message;
+    if (Object.keys(appData).length) {
+      await this.prisma.application.update({ where: { id }, data: appData });
+    }
+
     return this.findOne(id);
   }
 
-  async exportExcel(query: OrderListQueryDto, currentUserId: number): Promise<Buffer> {
-    const { data } = await this.findAll({ ...query, limit: 10000 }, currentUserId);
+  async exportExcel(
+    query: OrderListQueryDto,
+    currentUserId: string,
+  ): Promise<Buffer> {
+    const { data } = await this.findAll(
+      { ...query, page: 1, limit: 10000 },
+      currentUserId,
+    );
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Orders');
     sheet.columns = [

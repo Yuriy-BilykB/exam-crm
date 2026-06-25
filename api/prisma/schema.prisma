@@ -1,0 +1,185 @@
+// CRM normalized schema (MySQL).
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  runtime      = "nodejs"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "mysql"
+  // Connection URL is provided via prisma.config.ts (Prisma 7).
+}
+
+// ----------------------------- Enums -----------------------------
+
+enum Role {
+  admin
+  manager
+}
+
+enum CourseName {
+  FS
+  QACX
+  JCX
+  JSCX
+  FE
+  PCX
+}
+
+enum CourseType {
+  pro
+  minimal
+  premium
+  incubator
+  vip
+}
+
+enum CourseFormat {
+  static
+  online
+}
+
+enum ApplicationStatus {
+  InWork   @map("In work")
+  New
+  Agree
+  Disaggre
+  Dubbing
+}
+
+enum TokenType {
+  activate
+  recovery
+}
+
+// ----------------------------- Models -----------------------------
+
+model User {
+  id        String   @id @default(cuid())
+
+  email     String   @unique @db.VarChar(100)
+  password  String?  @db.VarChar(255)
+  name      String?  @db.VarChar(50)
+  surname   String?  @db.VarChar(50)
+  role      Role     @default(manager)
+  isActive  Boolean  @default(false) @map("is_active")
+  isBanned  Boolean  @default(false) @map("is_banned")
+
+  applications     Application[]
+  comments         Comment[]
+  activationTokens ActivationToken[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  
+  name      String?  @db.VarChar(50)
+  surname   String?  @db.VarChar(50)
+  email     String?  @db.VarChar(100)
+  phone     String?  @db.VarChar(20)
+  age       Int?
+
+  applications Application[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+
+  @@map("clients")
+}
+
+model Course {
+  id     String       @id @default(cuid())
+  name   CourseName
+  type   CourseType
+  format CourseFormat
+
+  applications Application[]
+
+  // A course is uniquely identified by its (name, type, format) combination.
+  @@unique([name, type, format])
+  @@map("courses")
+}
+
+model Application {
+  id          String            @id @default(cuid())
+  // Nullable: many legacy leads have no course/format/type selected yet.
+  status      ApplicationStatus @default(New)
+  sum         Int?
+  alreadyPaid Int?              @map("already_paid")
+  message     String?           @db.Text
+  utm         String?           @db.VarChar(255)
+
+  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId    String            @map("client_id")
+
+  course   Course?   @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  courseId    String?           @map("course_id")
+
+  manager  User?     @relation(fields: [managerId], references: [id], onDelete: SetNull)
+  managerId   String?           @map("manager_id")
+
+  group    Group?    @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  groupId     String?           @map("group_id")
+
+  comments Comment[]
+
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+
+  @@index([clientId])
+  @@index([courseId])
+  @@index([managerId])
+  @@index([groupId])
+  @@index([status])
+  @@map("applications")
+}
+
+model Comment {
+  id            String   @id @default(cuid())
+  text          String   @db.Text
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  applicationId String   @map("application_id")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String   @map("user_id")
+
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([applicationId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model Group {
+  id        String   @id @default(cuid())
+  name      String   @unique @db.VarChar(100)
+
+  applications Application[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("groups")
+}
+
+model ActivationToken {
+  id        String    @id @default(cuid())
+  token     String    @db.VarChar(512)
+  type      TokenType
+  expiresAt DateTime  @map("expires_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String    @map("user_id")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("activation_tokens")
+}

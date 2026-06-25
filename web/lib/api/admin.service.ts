@@ -9,6 +9,7 @@ export interface ManagerUser {
   id: number;
   email: string;
   name: string | null;
+  surname: string | null;
   role: string;
   isActive: boolean;
   isBanned: boolean;
@@ -18,6 +19,17 @@ export interface ManagerUser {
 export interface ManagersResponse {
   data: ManagerUser[];
   total: number;
+}
+
+export interface CreateManagerBody {
+  email: string;
+  name?: string;
+  surname?: string;
+}
+
+export interface ActionLinkResult {
+  link: string;
+  emailSent: boolean;
 }
 
 const adminService = {
@@ -35,16 +47,16 @@ const adminService = {
     const { data } = await api.get<OrderStatItem[]>(`/admin/managers/${managerId}/stats`);
     return data;
   },
-  async createManager(body: { email: string; name?: string }): Promise<ManagerUser> {
+  async createManager(body: CreateManagerBody): Promise<ManagerUser> {
     const { data } = await api.post<ManagerUser>('/admin/managers', body);
     return data;
   },
-  async activateManager(id: number): Promise<{ link: string }> {
-    const { data } = await api.post<{ link: string }>(`/admin/managers/${id}/activate`);
+  async activateManager(id: number): Promise<ActionLinkResult> {
+    const { data } = await api.post<ActionLinkResult>(`/admin/managers/${id}/activate`);
     return data;
   },
-  async recoveryPassword(id: number): Promise<{ link: string }> {
-    const { data } = await api.post<{ link: string }>(`/admin/managers/${id}/recovery`);
+  async recoveryPassword(id: number): Promise<ActionLinkResult> {
+    const { data } = await api.post<ActionLinkResult>(`/admin/managers/${id}/recovery`);
     return data;
   },
   async banUser(id: number): Promise<ManagerUser> {

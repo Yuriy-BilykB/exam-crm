@@ -1,23 +1,18 @@
 import { Injectable, ConflictException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Group } from './group.entity';
+import { PrismaService } from '../database/prisma.service';
+import type { Group } from '../generated/prisma/client';
 
 @Injectable()
 export class GroupService {
-  constructor(
-    @InjectRepository(Group)
-    private readonly repo: Repository<Group>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async findAll(): Promise<Group[]> {
-    return this.repo.find({ order: { name: 'ASC' } });
+    return this.prisma.group.findMany({ orderBy: { name: 'asc' } });
   }
 
   async create(name: string): Promise<Group> {
-    const existing = await this.repo.findOne({ where: { name } });
+    const existing = await this.prisma.group.findUnique({ where: { name } });
     if (existing) throw new ConflictException('Group with this name already exists');
-    const group = this.repo.create({ name });
-    return this.repo.save(group);
+    return this.prisma.group.create({ data: { name } });
   }
 }

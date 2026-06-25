@@ -1,6 +1,6 @@
 import { api } from '@/lib/api/client';
 
-export interface OrderListItem {
+export interface Order {
   id: number;
   name: string | null;
   surname: string | null;
@@ -29,7 +29,7 @@ export interface CommentItem {
   user?: { id: number; name: string | null; email: string };
 }
 
-export interface OrderDetail extends OrderListItem {
+export interface OrderDetail extends Order {
   comments?: CommentItem[];
 }
 
@@ -52,11 +52,11 @@ export type OrderListParams = {
 };
 
 export interface OrdersResponse {
-  data: OrderListItem[];
+  data: Order[];
   total: number;
 }
 
-const ordersService = {
+export const ordersService = {
   async getOrders(params: OrderListParams): Promise<OrdersResponse> {
     const response = await api.get<OrdersResponse>('/orders', { params });
     return response.data;
@@ -90,5 +90,3 @@ const ordersService = {
     return response.data;
   },
 };
-
-export default ordersService;

@@ -8,3 +8,11 @@ export class LoginDto {
   @MinLength(1)
   password: string;
 }
+
+export class SetPasswordDto {
+  @IsString()
+  token: string;
+
+  @IsString()
+  password: string;
+}

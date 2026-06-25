@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { AccessTokenPayload } from '../../token/token.service';
 
 const secret = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 
@@ -14,7 +15,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  validate(payload: { sub: number; email: string; role: string }) {
-    return { id: payload.sub, email: payload.email, role: payload.role };
+  validate(payload: AccessTokenPayload) {
+    return { id: payload.userId, role: payload.role };
   }
 }

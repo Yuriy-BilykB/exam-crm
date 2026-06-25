@@ -1,14 +1,14 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserModule } from '../user/user.module';
-import { AuthModule } from '../auth/auth.module';
-import { Order } from '../order/order.entity';
+import { TokenModule } from '../token/token.module';
+import { MailModule } from '../mail/mail.module';
 import { AdminController } from './admin.controller';
+import { AdminManagersController } from './admin-managers.controller';
 import { AdminService } from './admin.service';
 
 @Module({
-  imports: [UserModule, AuthModule, TypeOrmModule.forFeature([Order])],
-  controllers: [AdminController],
+  imports: [UserModule, TokenModule, MailModule],
+  controllers: [AdminController, AdminManagersController],
   providers: [AdminService],
 })
 export class AdminModule {}

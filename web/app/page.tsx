@@ -2,19 +2,19 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { authService } from '@/lib/api/auth.service';
+import { useAuth } from '@/lib/auth/auth-context';
 
 export default function Home() {
   const router = useRouter();
+  const { status } = useAuth();
 
   useEffect(() => {
-    const token = authService.getStoredToken();
-    if (token) {
+    if (status === 'authenticated') {
       router.replace('/orders');
-    } else {
+    } else if (status === 'unauthenticated') {
       router.replace('/login');
     }
-  }, [router]);
+  }, [status, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">

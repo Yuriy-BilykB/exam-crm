@@ -1,73 +1,89 @@
 'use client';
 
-import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { getApiErrorMessage } from '@/lib/api/errors';
+import {
+  createManagerSchema,
+  type CreateManagerFormValues,
+} from '@/lib/validation/manager.schema';
 
-interface CreateManagerModalProps {
+type UserCredentialsType = { email: string; name?: string; surname?: string };
+
+type Props = {
   onClose: () => void;
-  onCreate: (data: { email: string; name?: string }) => Promise<void>;
-}
+  onCreate: (data: UserCredentialsType) => Promise<unknown>;
+};
 
-export default function CreateManagerModal({ onClose, onCreate }: CreateManagerModalProps) {
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [surname, setSurname] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+export default function CreateManagerModal({ onClose, onCreate }: Props) {
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateManagerFormValues>({
+    resolver: zodResolver(createManagerSchema),
+    defaultValues: { email: '', name: '', surname: '' },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
+  const onSubmit = async (values: CreateManagerFormValues) => {
+    const payload: UserCredentialsType = { email: values.email };
+    if (values.name) payload.name = values.name;
+    if (values.surname) payload.surname = values.surname;
     try {
-      const fullName = [name.trim(), surname.trim()].filter(Boolean).join(' ');
-      await onCreate({ email: email.trim(), name: fullName || undefined });
+      console.log(payload, '>>>>>>>>');
+
+      await onCreate(payload);
       onClose();
-    } catch (e: unknown) {
-      setError((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed');
-    } finally {
-      setLoading(false);
+    } catch (e) {
+      setError('root', { message: getApiErrorMessage(e, 'Failed') });
     }
   };
+
+  const fieldClass =
+    'w-full px-3 py-2 border border-gray-400 rounded bg-white text-gray-900 placeholder-gray-500';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full m-4 p-6" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-xl font-semibold mb-4">Create manager</h2>
-        {error && (
+        {errors.root && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded text-sm">
-            {error}
+            {errors.root.message}
           </div>
         )}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
-              className="w-full px-3 py-2 border border-gray-400 rounded bg-white text-gray-900 placeholder-gray-500"
-              required
+              className={fieldClass}
+              disabled={isSubmitting}
+              {...register('email')}
             />
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
             <input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
               placeholder="Name"
-              className="w-full px-3 py-2 border border-gray-400 rounded bg-white text-gray-900 placeholder-gray-500"
+              className={fieldClass}
+              disabled={isSubmitting}
+              {...register('name')}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Surname</label>
             <input
               type="text"
-              value={surname}
-              onChange={(e) => setSurname(e.target.value)}
               placeholder="Surname"
-              className="w-full px-3 py-2 border border-gray-400 rounded bg-white text-gray-900 placeholder-gray-500"
+              className={fieldClass}
+              disabled={isSubmitting}
+              {...register('surname')}
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -80,7 +96,7 @@ export default function CreateManagerModal({ onClose, onCreate }: CreateManagerM
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={isSubmitting}
               className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
             >
               CREATE

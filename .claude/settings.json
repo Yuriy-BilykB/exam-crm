@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /Users/yu_r1/exam-crm/api && cat tsconfig.json && echo \"---nest-cli---\" && cat nest-cli.json && echo \"---distinct course/type/format/status in dump---\" && grep -oE \"'\\(FS|QACX|JCX|JSCX|FE|PCX\\)?','\\(static|online\\)?','\\(pro|minimal|premium|incubator|vip\\)?'\" /Users/yu_r1/Downloads/orders.sql | sort -u | head -50)",
+      "Read(//Users/yu_r1/Downloads/**)",
+      "Bash(npm view *)",
+      "Bash(cp /Users/yu_r1/Downloads/orders.sql /Users/yu_r1/exam-crm/api/prisma/orders.sql && echo \"copied $\\(wc -l < /Users/yu_r1/exam-crm/api/prisma/orders.sql\\) lines\")",
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(npx tsx *)",
+      "Bash(npm run *)",
+      "Bash(head -20 /tmp/api.log)",
+      "Read(//private/tmp/**)",
+      "Bash(pkill -f \"dist/main\")",
+      "Bash(lsof -nP -i:5000)",
+      "Bash(pkill -9 -f \"dist/main.js\")",
+      "Bash(lsof -ti:5000)",
+      "Bash(xargs kill -9)",
+      "Bash(find dist *)",
+      "Bash(find . -maxdepth 2 -name '*.tsbuildinfo')",
+      "Bash(docker exec *)",
+      "Bash(pkill -9 -f \"nest start\")",
+      "Bash(pkill -9 -f \"dist/main\")",
+      "Bash(npm i *)",
+      "Bash(npx prettier *)",
+      "Bash(npx next *)",
+      "Bash(npx eslint *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(node -e \"console.log\\('zod', require\\('zod/package.json'\\).version\\); console.log\\('rhf', require\\('react-hook-form/package.json'\\).version\\); console.log\\('resolvers', require\\('@hookform/resolvers/package.json'\\).version\\)\")",
+      "Bash(git rm *)",
+      "Bash(grep -v \"OrderRow.tsx\\\\|no-unused-expressions\\\\|^$\")",
+      "Bash(grep -v \"no-unused-expressions\\\\|OrderRow.tsx\\\\|^$\")"
+    ],
+    "additionalDirectories": [
+      "/Users/yu_r1/Downloads"
+    ]
+  }
+}
