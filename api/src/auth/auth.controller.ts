@@ -28,7 +28,11 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const { refreshToken, ...rest } = await this.authService.login(dto);
-    res.cookie(refreshCookieKey, refreshToken, this.config.refreshCookieOptions);
+    res.cookie(
+      refreshCookieKey,
+      refreshToken,
+      this.config.refreshCookieOptions,
+    );
     return rest;
   }
 
@@ -39,7 +43,11 @@ export class AuthController {
   ) {
     const { refreshToken, ...rest } =
       await this.authService.refreshTokens(refreshCookie);
-    res.cookie(refreshCookieKey, refreshToken, this.config.refreshCookieOptions);
+    res.cookie(
+      refreshCookieKey,
+      refreshToken,
+      this.config.refreshCookieOptions,
+    );
     return rest;
   }
 
