@@ -10,7 +10,7 @@ export default function LoginPage() {
   const { status } = useAuth();
 
   useEffect(() => {
-    if (status === 'authenticated') router.replace('/orders');
+    if (status === 'authenticated') {router.replace('/orders');}
   }, [status, router]);
 
   return (

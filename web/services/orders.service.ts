@@ -1,4 +1,10 @@
 import { api } from '@/lib/api/client';
+import type {
+  OrderStatus,
+  CourseName,
+  CourseFormat,
+  CourseType,
+} from '@/lib/reference/lists';
 
 export interface Order {
   id: number;
@@ -7,24 +13,24 @@ export interface Order {
   email: string | null;
   phone: string | null;
   age: number | null;
-  course?: { id: number; code: string } | null;
-  format?: { id: number; name: string } | null;
-  type?: { id: number; name: string } | null;
-  status?: { id: number; name: string } | null;
-  manager?: { id: number; name: string | null } | null;
-  group?: { id: number; name: string } | null;
+  course?: CourseName | null;
+  courseFormat?: CourseFormat | null;
+  courseType?: CourseType | null;
+  status?: OrderStatus | null;
+  manager?: { id: string; name: string | null } | null;
+  group?: { id: string; name: string } | null;
   sum: number | null;
   alreadyPaid: number | null;
   utm: string | null;
   message: string | null;
-  created_at: string | null;
+  createdAt: string | null;
 }
 
 export interface CommentItem {
   id: number;
   orderId: number;
   userId: number;
-  comment: string | null;
+  text: string;
   createdAt: string;
   user?: { id: number; name: string | null; email: string };
 }
@@ -43,10 +49,13 @@ export type OrderListParams = {
   surname?: string;
   email?: string;
   phone?: string;
-  status_id?: string;
-  course_id?: string;
-  format_id?: string;
-  type_id?: string;
+  status?: OrderStatus;
+  course?: CourseName;
+  format?: CourseFormat;
+  type?: CourseType;
+  age?: number;
+  startDate?: string;
+  endDate?: string;
   manager_id?: string;
   group_id?: string;
 };

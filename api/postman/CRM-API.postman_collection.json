@@ -1,11 +1,20 @@
 {
   "info": {
     "name": "CRM Programming School API",
+    "description": "Колекція REST API для CRM Programming School (NestJS). Порядок роботи:\n1. Виконай **Auth → Login** (admin@gmail.com / admin) — accessToken збережеться в змінну колекції автоматично, а refresh_token покладеться в cookie-jar Postman.\n2. Усі інші запити авторизуються через `Bearer {{accessToken}}` (успадковано на рівні колекції).\n3. Endpoint-и під теґом Admin вимагають роль admin.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:5000" },
-    { "key": "access_token", "value": "" }
+    { "key": "baseUrl", "value": "http://localhost:5050" },
+    { "key": "accessToken", "value": "" },
+    { "key": "orderId", "value": "1" },
+    { "key": "managerId", "value": "" },
+    { "key": "groupId", "value": "" },
+    { "key": "userId", "value": "" }
   ],
   "item": [
     {
@@ -17,48 +26,107 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "var json = pm.response.json();",
-                  "if (json.access_token) pm.collectionVariables.set('access_token', json.access_token);"
+                  "if (json.accessToken) {",
+                  "  pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "  console.log('accessToken saved');",
+                  "}",
+                  "if (json.user && json.user.id) {",
+                  "  pm.collectionVariables.set('userId', json.user.id);",
+                  "}"
                 ]
               }
             }
           ],
           "request": {
+            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@gmail.com\",\n  \"password\": \"admin\"\n}" },
-            "url": "{{baseUrl}}/auth/login"
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@gmail.com\",\n  \"password\": \"admin\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Логін. Повертає `{ accessToken, user }` і кладе httpOnly-cookie `refresh_token`."
+          }
+        },
+        {
+          "name": "Refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Оновлює токени за cookie `refresh_token` (Postman підставляє cookie автоматично після Login)."
           }
         },
         {
           "name": "Me",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": "{{baseUrl}}/auth/me"
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Профіль поточного залогіненого користувача."
           }
         },
         {
-          "name": "Set password (activate/recovery)",
+          "name": "Set password (activate / recovery)",
           "request": {
+            "auth": { "type": "noauth" },
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"token\": \"<token from link>\",\n  \"password\": \"newPassword123\"\n}" },
-            "url": "{{baseUrl}}/auth/set-password"
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"<token з посилання активації/відновлення>\",\n  \"password\": \"newPassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/set-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "set-password"]
+            },
+            "description": "Встановлення паролю за токеном (флоу activate або recovery)."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Очищає cookie `refresh_token`."
           }
         }
-      ]
-    },
-    {
-      "name": "Reference",
-      "item": [
-        { "name": "Courses", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }], "url": "{{baseUrl}}/courses" } },
-        { "name": "Course formats", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }], "url": "{{baseUrl}}/course-formats" } },
-        { "name": "Course types", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }], "url": "{{baseUrl}}/course-types" } },
-        { "name": "Statuses", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }], "url": "{{baseUrl}}/statuses" } },
-        { "name": "Groups", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }], "url": "{{baseUrl}}/groups" } },
-        { "name": "Create group", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"name\": \"Group 1\"}" }, "url": "{{baseUrl}}/groups" } }
       ]
     },
     {
@@ -68,128 +136,303 @@
           "name": "List orders",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": "{{baseUrl}}/orders?page=1&limit=25&sortBy=created_at&sortOrder=DESC"
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders?page=1&limit=25&sortBy=createdAt&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "25", "description": "1..100" },
+                { "key": "sortBy", "value": "createdAt", "description": "id|name|surname|email|phone|age|course|courseFormat|courseType|status|manager|group|sum|alreadyPaid|createdAt" },
+                { "key": "sortOrder", "value": "DESC", "description": "ASC | DESC" },
+                { "key": "my_orders", "value": "true", "disabled": true, "description": "лише мої заявки" },
+                { "key": "name", "value": "", "disabled": true },
+                { "key": "surname", "value": "", "disabled": true },
+                { "key": "email", "value": "", "disabled": true },
+                { "key": "phone", "value": "", "disabled": true },
+                { "key": "status", "value": "In work", "disabled": true, "description": "In work|New|Agree|Disagree|Dubbing" },
+                { "key": "course", "value": "QACX", "disabled": true, "description": "FS|QACX|JCX|JSCX|FE|PCX" },
+                { "key": "format", "value": "online", "disabled": true, "description": "static|online" },
+                { "key": "type", "value": "vip", "disabled": true, "description": "pro|minimal|premium|incubator|vip" },
+                { "key": "age", "value": "25", "disabled": true },
+                { "key": "startDate", "value": "2022-01-01", "disabled": true, "description": "ISO date" },
+                { "key": "endDate", "value": "2022-12-31", "disabled": true, "description": "ISO date" },
+                { "key": "manager_id", "value": "", "disabled": true },
+                { "key": "group_id", "value": "", "disabled": true }
+              ]
+            },
+            "description": "Список заявок з пагінацією, сортуванням та фільтрами. Усі параметри опціональні."
           }
         },
         {
-          "name": "List orders (my only)",
+          "name": "Export orders (Excel)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": "{{baseUrl}}/orders?my_orders=true&page=1&limit=25"
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/export?sortBy=createdAt&sortOrder=DESC",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "export"],
+              "query": [
+                { "key": "sortBy", "value": "createdAt" },
+                { "key": "sortOrder", "value": "DESC" },
+                { "key": "my_orders", "value": "true", "disabled": true },
+                { "key": "status", "value": "In work", "disabled": true },
+                { "key": "course", "value": "QACX", "disabled": true }
+              ]
+            },
+            "description": "Формує .xlsx з заявками за поточними фільтрами. У Postman тисни Send and Download."
           }
         },
         {
-          "name": "Get order",
+          "name": "Get order by id",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": "{{baseUrl}}/orders/1"
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}"]
+            }
           }
         },
         {
           "name": "Update order",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"status_id\": 2,\n  \"group_id\": 1\n}" },
-            "url": "{{baseUrl}}/orders/1"
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ivan\",\n  \"surname\": \"Petrenko\",\n  \"email\": \"ivan@example.com\",\n  \"phone\": \"380671234567\",\n  \"age\": 25,\n  \"course\": \"QACX\",\n  \"courseFormat\": \"online\",\n  \"courseType\": \"vip\",\n  \"status\": \"In work\",\n  \"groupId\": \"{{groupId}}\",\n  \"sum\": 15000,\n  \"alreadyPaid\": 4000,\n  \"utm\": \"utm-source\",\n  \"message\": \"note\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}"]
+            },
+            "description": "Редагування заявки. Усі поля опціональні. Редагувати можна лише заявку без менеджера або свою."
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "Comments",
+      "item": [
         {
-          "name": "Export Excel",
+          "name": "List comments of order",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": "{{baseUrl}}/orders/export?page=1&limit=100"
-          }
-        },
-        {
-          "name": "Get comments",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": "{{baseUrl}}/orders/1/comments"
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}", "comments"]
+            }
           }
         },
         {
           "name": "Add comment",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\"comment\": \"First contact\"}" },
-            "url": "{{baseUrl}}/orders/1/comments"
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"my comment\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}", "comments"]
+            },
+            "description": "Додає коментар. Заявка стає взятою поточним менеджером, статус null/New → In work."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Groups",
+      "item": [
+        {
+          "name": "List groups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/groups",
+              "host": ["{{baseUrl}}"],
+              "path": ["groups"]
+            }
+          }
+        },
+        {
+          "name": "Create group",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json && json.id) pm.collectionVariables.set('groupId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"sep-2022\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/groups",
+              "host": ["{{baseUrl}}"],
+              "path": ["groups"]
+            },
+            "description": "Створює групу. Назва має бути унікальною."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get user by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
           }
         }
       ]
     },
     {
       "name": "Admin",
+      "description": "Потребує роль admin.",
       "item": [
         {
-          "name": "Create manager",
+          "name": "Orders stats (by status)",
           "request": {
-            "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"email\": \"manager@example.com\",\n  \"name\": \"John\"\n}" },
-            "url": "{{baseUrl}}/admin/managers"
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "stats"]
+            },
+            "description": "Загальна статистика заявок по кожному статусу."
           }
         },
         {
           "name": "List managers",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": "{{baseUrl}}/admin/managers?page=1&limit=25"
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/managers?page=1&limit=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "managers"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "25" }
+              ]
+            }
           }
         },
         {
-          "name": "Stats by status",
+          "name": "Create manager",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json && json.id) pm.collectionVariables.set('managerId', json.id);"
+                ]
+              }
+            }
+          ],
           "request": {
-            "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": "{{baseUrl}}/admin/stats"
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"manager@example.com\",\n  \"name\": \"John\",\n  \"surname\": \"Doe\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/admin/managers",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "managers"]
+            }
           }
         },
         {
           "name": "Manager stats",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": "{{baseUrl}}/admin/managers/2/stats"
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/managers/{{managerId}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "managers", "{{managerId}}", "stats"]
+            }
           }
         },
         {
-          "name": "Activate manager (get link)",
+          "name": "Activate manager",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": "{{baseUrl}}/admin/managers/2/activate"
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/managers/{{managerId}}/activate",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "managers", "{{managerId}}", "activate"]
+            },
+            "description": "Генерує посилання активації з токеном (30 хв)."
           }
         },
         {
-          "name": "Recovery password (get link)",
+          "name": "Recovery manager password",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": "{{baseUrl}}/admin/managers/2/recovery"
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/managers/{{managerId}}/recovery",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "managers", "{{managerId}}", "recovery"]
+            }
           }
         },
         {
-          "name": "Ban user",
+          "name": "Ban manager",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": "{{baseUrl}}/admin/managers/2/ban"
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/managers/{{managerId}}/ban",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "managers", "{{managerId}}", "ban"]
+            }
           }
         },
         {
-          "name": "Unban user",
+          "name": "Unban manager",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": "{{baseUrl}}/admin/managers/2/unban"
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/managers/{{managerId}}/unban",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "managers", "{{managerId}}", "unban"]
+            }
           }
         }
       ]

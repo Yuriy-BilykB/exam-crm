@@ -28,10 +28,9 @@ export default function CreateManagerModal({ onClose, onCreate }: Props) {
 
   const onSubmit = async (values: CreateManagerFormValues) => {
     const payload: UserCredentialsType = { email: values.email };
-    if (values.name) payload.name = values.name;
-    if (values.surname) payload.surname = values.surname;
+    if (values.name) {payload.name = values.name;}
+    if (values.surname) {payload.surname = values.surname;}
     try {
-      console.log(payload, '>>>>>>>>');
 
       await onCreate(payload);
       onClose();

@@ -2,10 +2,16 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { TokenService } from '../token/token.service';
 import { PrismaService } from '../database/prisma.service';
-import { MailService } from '../mail/mail.service';
-import { CreateManagerDto } from '../user/dto/user.dto';
+// Email sending temporarily disabled.
+// import { MailService } from '../mail/mail.service';
+import { CreateManagerDto, UserResponse } from '../user/dto/user.dto';
 import { UserRole } from '../common/enums';
-import { statusRef } from '../common/reference';
+import { AppConfigService } from '../config/app-config.service';
+import type { Prisma } from '../generated/prisma/client';
+
+type ActivateManagerResponse = { link: string; emailSent: boolean };
+
+type ManagerStatsResponse = { statusName: string; count: number };
 
 @Injectable()
 export class AdminService {
@@ -13,37 +19,41 @@ export class AdminService {
     private readonly userService: UserService,
     private readonly tokenService: TokenService,
     private readonly prisma: PrismaService,
-    private readonly mailService: MailService,
+    private readonly config: AppConfigService,
+    // Email sending temporarily disabled.
+    // private readonly mailService: MailService,
   ) {}
 
   async createManager(dto: CreateManagerDto) {
-    const user = await this.userService.createManager(dto);
-    return this.userService.toSafeUser(user);
+    return await this.userService.createManager(dto);
   }
 
-  async getManagersPaginated(page: number, limit: number) {
-    const { data, total } = await this.userService.findManagersPaginated(
-      page,
-      limit,
-    );
-    return {
-      data: data.map((u) => this.userService.toSafeUser(u)),
-      total,
-    };
+  async getManagers(
+    page: number,
+    limit: number,
+  ): Promise<{ data: UserResponse[]; total: number }> {
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.user.findMany({
+        where: { role: UserRole.MANAGER },
+        orderBy: { id: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.user.count({ where: { role: UserRole.MANAGER } }),
+    ]);
+    return { data, total };
   }
 
   getActivationLink(
     userId: string,
     tokenType: 'activate' | 'recovery',
   ): string {
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const baseUrl = this.config.frontendUrl;
     const token = this.tokenService.generateActionToken(userId, tokenType);
     return `${baseUrl.replace(/\/$/, '')}/${tokenType}/${token}`;
   }
 
-  async activateManager(
-    userId: string,
-  ): Promise<{ link: string; emailSent: boolean }> {
+  async activateManager(userId: string): Promise<ActivateManagerResponse> {
     const user = await this.userService.findOne(userId);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -52,62 +62,57 @@ export class AdminService {
       throw new NotFoundException('Not a manager');
     }
     const link = this.getActivationLink(userId, 'activate');
-    const emailSent = await this.mailService.sendActionLink(
-      user.email,
-      link,
-      'activate',
-    );
+    // Email sending temporarily disabled — the link is copied to clipboard on the client.
+    // const emailSent = await this.mailService.sendActionLink(
+    //   user.email,
+    //   link,
+    //   'activate',
+    // );
+    const emailSent = false;
     return { link, emailSent };
   }
 
-  async recoveryPassword(
-    userId: string,
-  ): Promise<{ link: string; emailSent: boolean }> {
+  async recoveryPassword(userId: string): Promise<ActivateManagerResponse> {
     const user = await this.userService.findOne(userId);
     if (!user) throw new NotFoundException('User not found');
     const link = this.getActivationLink(userId, 'recovery');
-    const emailSent = await this.mailService.sendActionLink(
-      user.email,
-      link,
-      'recovery',
-    );
+    // Email sending temporarily disabled — the link is copied to clipboard on the client.
+    // const emailSent = await this.mailService.sendActionLink(
+    //   user.email,
+    //   link,
+    //   'recovery',
+    // );
+    const emailSent = false;
     return { link, emailSent };
   }
 
-  async banUser(userId: string) {
-    const user = await this.userService.update(userId, { isBanned: true });
-    return user ? this.userService.toSafeUser(user) : null;
+  async banManager(userId: string) {
+    return await this.userService.update(userId, { isBanned: true });
   }
 
-  async unbanUser(userId: string) {
-    const user = await this.userService.update(userId, { isBanned: false });
-    return user ? this.userService.toSafeUser(user) : null;
+  async unbanManager(userId: string) {
+    return await this.userService.update(userId, { isBanned: false });
   }
 
-  /** Stats: count all applications grouped by status */
-  async getStatsByStatus(): Promise<{ statusName: string; count: number }[]> {
-    const grouped = await this.prisma.application.groupBy({
+  private async managerStatsByStatus(
+    where?: Prisma.OrderWhereInput,
+  ): Promise<ManagerStatsResponse[]> {
+    const grouped = await this.prisma.order.groupBy({
       by: ['status'],
+      where,
       _count: { _all: true },
     });
-    return grouped.map((g) => ({
-      statusName: statusRef(g.status)?.name ?? 'No status',
-      count: g._count._all,
+    return grouped.map((group) => ({
+      statusName: group.status ?? 'No status',
+      count: group._count._all,
     }));
   }
 
-  /** Stats for one manager: applications count by status */
-  async getManagerStats(
-    managerId: string,
-  ): Promise<{ statusName: string; count: number }[]> {
-    const grouped = await this.prisma.application.groupBy({
-      by: ['status'],
-      where: { managerId },
-      _count: { _all: true },
-    });
-    return grouped.map((g) => ({
-      statusName: statusRef(g.status)?.name ?? 'No status',
-      count: g._count._all,
-    }));
+  getManagerStatsByStatus() {
+    return this.managerStatsByStatus();
+  }
+
+  getManagerStats(managerId: string) {
+    return this.managerStatsByStatus({ managerId });
   }
 }

@@ -1,30 +1,41 @@
 'use client';
 
-import type { Group, Status, CourseFormat, CourseType } from '@/lib/api/reference.service';
+import { toast } from 'sonner';
+import type { Group } from '@/lib/api/reference.service';
 import { useOrderSearchParams } from '@/hooks/useOrderSearchParams';
+import { useExportOrders } from '@/hooks/orders/useExportOrders';
+import { getApiErrorMessage } from '@/lib/api/errors';
+import {
+  OrderStatusList,
+  OrderStatusLabels,
+  CourseNameList,
+  CourseNameLabels,
+  CourseFormatList,
+  CourseFormatLabels,
+  CourseTypeList,
+  CourseTypeLabels,
+} from '@/lib/reference/lists';
+import { ResetIcon, ExcelIcon } from './icons';
 
-interface OrdersFiltersProps {
+interface Props {
   groups: Group[];
-  statuses: Status[];
-  formats: CourseFormat[];
-  types: CourseType[];
-  onExport?: () => void;
-  exportLoading?: boolean;
 }
 
-export default function OrdersFilters({
-  groups,
-  statuses,
-  formats,
-  types,
-  onExport,
-  exportLoading = false,
-}: OrdersFiltersProps) {
-  const { params, setParams, resetFilters } = useOrderSearchParams();
+export default function OrdersFilters({ groups }: Props) {
+  const { params, setParams, listParams, resetFilters } = useOrderSearchParams();
 
   const setFilter = (patch: Parameters<typeof setParams>[0]) => {
     setParams({ page: 1, ...patch });
   };
+
+  const exportOrders = useExportOrders();
+
+  const handleExport = () => {
+    exportOrders.mutate(listParams, {
+      onError: (err) => toast.error(getApiErrorMessage(err, 'Could not export orders')),
+    });
+  };
+
 
   return (
     <div className="bg-white rounded-lg shadow p-4 mb-4">
@@ -70,41 +81,65 @@ export default function OrdersFilters({
           />
         </div>
         <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Age</label>
+          <input
+            type="number"
+            min="0"
+            value={params.age}
+            onChange={(e) => setFilter({ age: e.target.value })}
+            placeholder="Age"
+            className="w-full px-2 py-1.5 border border-gray-400 rounded text-sm bg-white text-gray-900 placeholder-gray-500"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Course</label>
+          <select
+            value={params.course}
+            onChange={(e) => setFilter({ course: e.target.value })}
+            className="w-full px-2 py-1.5 border border-gray-400 rounded text-sm bg-white text-gray-900"
+          >
+            <option value="">All courses</option>
+            {CourseNameList.map((course) => (
+              <option key={course} value={course}>{CourseNameLabels[course]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Format</label>
           <select
-            value={params.format_id}
-            onChange={(e) => setFilter({ format_id: e.target.value })}
+            value={params.format}
+            onChange={(e) => setFilter({ format: e.target.value })}
             className="w-full px-2 py-1.5 border border-gray-400 rounded text-sm bg-white text-gray-900"
           >
             <option value="">All formats</option>
-            {formats.map((f) => (
-              <option key={f.id} value={f.id}>{f.name}</option>
+            {CourseFormatList.map((format) => (
+              <option key={format} value={format}>{CourseFormatLabels[format]}</option>
             ))}
           </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
           <select
-            value={params.type_id}
-            onChange={(e) => setFilter({ type_id: e.target.value })}
+            value={params.type}
+            onChange={(e) => setFilter({ type: e.target.value })}
             className="w-full px-2 py-1.5 border border-gray-400 rounded text-sm bg-white text-gray-900"
           >
             <option value="">All types</option>
-            {types.map((t) => (
-              <option key={t.id} value={t.id}>{t.name}</option>
+            {CourseTypeList.map((type) => (
+              <option key={type} value={type}>{CourseTypeLabels[type]}</option>
             ))}
           </select>
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
           <select
-            value={params.status_id}
-            onChange={(e) => setFilter({ status_id: e.target.value })}
+            value={params.status}
+            onChange={(e) => setFilter({ status: e.target.value })}
             className="w-full px-2 py-1.5 border border-gray-400 rounded text-sm bg-white text-gray-900"
           >
             <option value="">All statuses</option>
-            {statuses.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+            {OrderStatusList.map((status) => (
+              <option key={status} value={status}>{OrderStatusLabels[status]}</option>
             ))}
           </select>
         </div>
@@ -116,12 +151,30 @@ export default function OrdersFilters({
             className="w-full px-2 py-1.5 border border-gray-400 rounded text-sm bg-white text-gray-900"
           >
             <option value="">All groups</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
+            {groups.map((group) => (
+              <option key={group.id} value={group.id}>{group.name}</option>
             ))}
           </select>
         </div>
-        <div className="flex items-center gap-2">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Start date</label>
+          <input
+            type="date"
+            value={params.startDate}
+            onChange={(e) => setFilter({ startDate: e.target.value })}
+            className="w-full px-2 py-1.5 border border-gray-400 rounded text-sm bg-white text-gray-900"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">End date</label>
+          <input
+            type="date"
+            value={params.endDate}
+            onChange={(e) => setFilter({ endDate: e.target.value })}
+            className="w-full px-2 py-1.5 border border-gray-400 rounded text-sm bg-white text-gray-900"
+          />
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -129,36 +182,27 @@ export default function OrdersFilters({
               onChange={(e) => setFilter({ my_orders: e.target.checked })}
               className="rounded border-gray-300 text-green-500"
             />
-            <span className="text-sm">My</span>
+            <span className="text-sm text-gray-900">My</span>
           </label>
-        </div>
-        <div className="flex gap-2 flex-wrap">
           <button
             type="button"
             onClick={resetFilters}
-            className="px-3 py-1.5 border border-green-500 text-green-500 rounded text-sm hover:bg-green-50"
+            className="p-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center justify-center"
             title="Reset filters"
+            aria-label="Reset filters"
           >
-            Reset
+            <ResetIcon />
           </button>
           <button
             type="button"
-            onClick={resetFilters}
-            className="px-3 py-1.5 border border-red-500 text-red-500 rounded text-sm hover:bg-red-50"
-            title="Clear all filters"
+            onClick={handleExport}
+            disabled={exportOrders.isPending}
+            className="p-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 flex items-center justify-center"
+            title="Export Excel"
+            aria-label="Export Excel"
           >
-            Clear
+            <ExcelIcon />
           </button>
-          {onExport && (
-            <button
-              type="button"
-              onClick={onExport}
-              disabled={exportLoading}
-              className="px-3 py-1.5 bg-green-500 text-white rounded text-sm hover:bg-green-600 disabled:opacity-50"
-            >
-              {exportLoading ? 'Exporting...' : 'Export Excel'}
-            </button>
-          )}
         </div>
       </div>
     </div>

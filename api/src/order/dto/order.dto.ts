@@ -6,22 +6,30 @@ import {
   IsString,
   IsBoolean,
   IsIn,
+  IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { Trim } from '../../common/decorators/trim.decorator';
+import {
+  CourseValues,
+  CourseFormatValues,
+  CourseTypeValues,
+  OrderStatusValues,
+} from '../../common/enums';
 
 export class OrderListQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  page?: number = 1;
+  page = 1;
 
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(100)
-  limit?: number = 25;
+  limit = 25;
 
   @IsOptional()
   @IsIn([
@@ -32,25 +40,25 @@ export class OrderListQueryDto {
     'phone',
     'age',
     'course',
-    'course_format',
-    'course_type',
+    'courseFormat',
+    'courseType',
     'status',
     'manager',
     'group',
     'sum',
-    'already_paid',
-    'created_at',
+    'alreadyPaid',
+    'createdAt',
   ])
-  sortBy?: string = 'created_at';
+  sortBy = 'createdAt';
 
   @IsOptional()
   @IsIn(['ASC', 'DESC'])
-  sortOrder?: 'ASC' | 'DESC' = 'DESC';
+  sortOrder: 'ASC' | 'DESC' = 'DESC';
 
   @IsOptional()
   @Type(() => Boolean)
   @IsBoolean()
-  my_orders?: boolean = false;
+  my_orders = false;
 
   @IsOptional()
   @IsString()
@@ -69,20 +77,34 @@ export class OrderListQueryDto {
   phone?: string;
 
   @IsOptional()
-  @IsString()
-  status_id?: string;
+  @IsIn(OrderStatusValues)
+  status?: string;
 
   @IsOptional()
-  @IsString()
-  course_id?: string;
+  @IsIn(CourseValues)
+  course?: string;
 
   @IsOptional()
-  @IsString()
-  format_id?: string;
+  @IsIn(CourseFormatValues)
+  format?: string;
 
   @IsOptional()
-  @IsString()
-  type_id?: string;
+  @IsIn(CourseTypeValues)
+  type?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  age?: number;
+
+  @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
 
   @IsOptional()
   @IsString()
@@ -94,21 +116,20 @@ export class OrderListQueryDto {
 }
 
 export class UpdateOrderDto {
-  // Client fields
-  @IsOptional() @IsString() name?: string;
-  @IsOptional() @IsString() surname?: string;
-  @IsOptional() @IsString() email?: string;
-  @IsOptional() @IsString() phone?: string;
-  @IsOptional() @Type(() => Number) @IsInt() age?: number;
+  @Trim() @IsOptional() @IsString() name?: string | null;
+  @Trim() @IsOptional() @IsString() surname?: string | null;
+  @Trim() @IsOptional() @IsString() email?: string | null;
+  @Trim() @IsOptional() @IsString() phone?: string | null;
+  @IsOptional() @Type(() => Number) @IsInt() age?: number | null;
 
-  // Application fields. course/manager/group ids are real cuid strings;
-  // status_id is a synthetic reference id (see common/reference.ts).
-  @IsOptional() @IsString() course_id?: string | null;
-  @IsOptional() @Type(() => Number) @IsInt() status_id?: number;
-  @IsOptional() @IsString() manager_id?: string | null;
-  @IsOptional() @IsString() group_id?: string | null;
-  @IsOptional() @Type(() => Number) @IsInt() sum?: number;
-  @IsOptional() @Type(() => Number) @IsInt() already_paid?: number;
-  @IsOptional() @IsString() utm?: string;
-  @IsOptional() @IsString() message?: string;
+  @IsOptional() @IsIn(CourseValues) course?: string | null;
+  @IsOptional() @IsIn(CourseFormatValues) courseFormat?: string | null;
+  @IsOptional() @IsIn(CourseTypeValues) courseType?: string | null;
+  @IsOptional() @IsIn(OrderStatusValues) status?: string | null;
+
+  @IsOptional() @IsString() groupId?: string | null;
+  @IsOptional() @Type(() => Number) @IsInt() sum?: number | null;
+  @IsOptional() @Type(() => Number) @IsInt() alreadyPaid?: number | null;
+  @Trim() @IsOptional() @IsString() utm?: string | null;
+  @Trim() @IsOptional() @IsString() message?: string | null;
 }

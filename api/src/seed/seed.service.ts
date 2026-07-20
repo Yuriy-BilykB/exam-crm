@@ -12,8 +12,10 @@ export class SeedService implements OnModuleInit {
   async onModuleInit() {
     const existing = await this.userService.findByEmail(adminEmail);
     if (existing) {
-      // Always reset the admin password to "admin" so local login is guaranteed to work.
-      await this.userService.update(existing.id, { password: adminPassword, isActive: true });
+      await this.userService.update(existing.id, {
+        password: adminPassword,
+        isActive: true,
+      });
       return;
     }
     const user = await this.userService.create({

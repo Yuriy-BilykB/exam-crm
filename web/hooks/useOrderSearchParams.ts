@@ -1,23 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo} from 'react';
 import { useQueryStates } from 'nuqs';
 import {
   ORDERS_FILTER_DEBOUNCE_MS,
   orderSearchParamsParsers,
   toOrderListParams,
 } from '@/lib/orders-search-params';
+import { useDebouncedValue } from './useDebouncedValue';
 
-function useDebouncedValue<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-
-  return debounced;
-}
 
 export function useOrderSearchParams() {
   const [params, setParams] = useQueryStates(orderSearchParamsParsers, {
@@ -28,6 +19,7 @@ export function useOrderSearchParams() {
   const debouncedSurname = useDebouncedValue(params.surname, ORDERS_FILTER_DEBOUNCE_MS);
   const debouncedEmail = useDebouncedValue(params.email, ORDERS_FILTER_DEBOUNCE_MS);
   const debouncedPhone = useDebouncedValue(params.phone, ORDERS_FILTER_DEBOUNCE_MS);
+  const debouncedAge = useDebouncedValue(params.age, ORDERS_FILTER_DEBOUNCE_MS);
 
   const listParams = useMemo(
     () =>
@@ -37,8 +29,16 @@ export function useOrderSearchParams() {
         surname: debouncedSurname,
         email: debouncedEmail,
         phone: debouncedPhone,
+        age: debouncedAge,
       }),
-    [params, debouncedName, debouncedSurname, debouncedEmail, debouncedPhone],
+    [
+      params,
+      debouncedName,
+      debouncedSurname,
+      debouncedEmail,
+      debouncedPhone,
+      debouncedAge,
+    ],
   );
 
   const resetFilters = () => {
@@ -48,10 +48,14 @@ export function useOrderSearchParams() {
       surname: '',
       email: '',
       phone: '',
-      status_id: '',
-      format_id: '',
-      type_id: '',
+      age: '',
+      status: '',
+      course: '',
+      format: '',
+      type: '',
       group_id: '',
+      startDate: '',
+      endDate: '',
       my_orders: false,
     });
   };

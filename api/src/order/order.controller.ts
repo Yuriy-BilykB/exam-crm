@@ -8,6 +8,7 @@ import {
   UseGuards,
   Req,
   Res,
+  ParseIntPipe,
 } from '@nestjs/common';
 import type { Response, Request } from 'express';
 import { OrderService } from './order.service';
@@ -20,7 +21,7 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Get('export')
-  async export(
+  async exportOrders(
     @Query() query: OrderListQueryDto,
     @Req() req: Request & { user: { id: string } },
     @Res() res: Response,
@@ -35,21 +36,21 @@ export class OrderController {
   }
 
   @Get()
-  findAll(
+  getOrders(
     @Query() query: OrderListQueryDto,
     @Req() req: Request & { user: { id: string } },
   ) {
-    return this.orderService.findAll(query, req.user.id);
+    return this.orderService.getOrders(query, req.user.id);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.orderService.findOne(id);
+  getOrder(@Param('id', ParseIntPipe) id: number) {
+    return this.orderService.getOrder(id);
   }
 
   @Patch(':id')
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrderDto,
     @Req() req: Request & { user: { id: string } },
   ) {

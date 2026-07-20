@@ -12,7 +12,9 @@ export class GroupService {
 
   async create(name: string): Promise<Group> {
     const existing = await this.prisma.group.findUnique({ where: { name } });
-    if (existing) throw new ConflictException('Group with this name already exists');
+    if (existing) {
+      throw new ConflictException('Group with this name already exists');
+    }
     return this.prisma.group.create({ data: { name } });
   }
 }

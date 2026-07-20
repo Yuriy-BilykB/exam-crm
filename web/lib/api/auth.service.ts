@@ -9,19 +9,12 @@ import {
 export const authService = {
   async login(credentials: LoginRequest): Promise<User> {
     const { data } = await api.post<LoginResponse>('/auth/login', credentials);
-    authStore.setToken(data.accessToken);
-    authStore.setUser(data.user);
+    authStore.setSession(data);
     return data.user;
   },
 
-  /**
-   * Silent renew on app start: use the httpOnly refresh cookie to restore the
-   * access token into memory. Returns the user, or null if there's no session.
-   */
   async restoreSession(): Promise<User | null> {
-    // No stored user means there's no session to restore — skip the request
-    // so logged-out visitors don't fire a pointless /auth/refresh (401).
-    if (!authStore.getUser()) return null;
+    if (!authStore.getUser()) {return null;}
 
     try {
       await refreshAccessToken();

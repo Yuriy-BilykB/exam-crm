@@ -14,6 +14,7 @@ export interface ManagerUser {
   isActive: boolean;
   isBanned: boolean;
   createdAt: string;
+  lastLogin: string | null;
 }
 
 export interface ManagersResponse {

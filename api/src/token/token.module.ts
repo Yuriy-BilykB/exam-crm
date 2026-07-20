@@ -1,14 +1,16 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TokenService } from './token.service';
-
-const secret = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+import { AppConfigService } from '../config/app-config.service';
 
 @Module({
   imports: [
-    JwtModule.register({
-      secret,
-      signOptions: { expiresIn: '1d' },
+    JwtModule.registerAsync({
+      inject: [AppConfigService],
+      useFactory: (config: AppConfigService) => ({
+        secret: config.jwtSecret,
+        signOptions: { expiresIn: '1d' },
+      }),
     }),
   ],
   providers: [TokenService],

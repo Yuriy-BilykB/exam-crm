@@ -11,15 +11,16 @@ import { AuthService } from './auth.service';
 import { LoginDto, SetPasswordDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { Request, Response } from 'express';
-import {
-  refreshCookieKey,
-  refreshCookieOptions,
-} from 'src/shared/cookie-options';
+import { refreshCookieKey } from 'src/shared/cookie-options';
 import { Cookies } from '../common/decorators/cookies.decorator';
+import { AppConfigService } from '../config/app-config.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly config: AppConfigService,
+  ) {}
 
   @Post('login')
   async login(
@@ -27,7 +28,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const { refreshToken, ...rest } = await this.authService.login(dto);
-    res.cookie(refreshCookieKey, refreshToken, refreshCookieOptions);
+    res.cookie(refreshCookieKey, refreshToken, this.config.refreshCookieOptions);
     return rest;
   }
 
@@ -38,14 +39,14 @@ export class AuthController {
   ) {
     const { refreshToken, ...rest } =
       await this.authService.refreshTokens(refreshCookie);
-    res.cookie(refreshCookieKey, refreshToken, refreshCookieOptions);
+    res.cookie(refreshCookieKey, refreshToken, this.config.refreshCookieOptions);
     return rest;
   }
 
   @Post('logout')
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie(refreshCookieKey, {
-      ...refreshCookieOptions,
+      ...this.config.refreshCookieOptions,
       maxAge: undefined,
     });
     return { message: 'Logged out' };

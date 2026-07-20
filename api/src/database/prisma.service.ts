@@ -1,15 +1,17 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { PrismaClient } from '../generated/prisma/client';
+import { AppConfigService } from '../config/app-config.service';
 
 @Injectable()
 export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
-  constructor() {
+  constructor(config: AppConfigService) {
     super({
-      adapter: new PrismaMariaDb(process.env.DATABASE_URL as string),
+      adapter: new PrismaMariaDb(config.databaseUrl),
+      omit: { user: { password: true } },
     });
   }
 

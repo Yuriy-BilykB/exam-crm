@@ -2,10 +2,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ordersService } from '@/services/orders.service';
 import { orderKeys } from '@/lib/query/orders.keys';
 
-/**
- * Write actions on a single order (comment, edit). Both refresh the affected
- * order detail and the lists, so the UI stays in sync without manual refetching.
- */
 export function useOrderActions() {
   const queryClient = useQueryClient();
 

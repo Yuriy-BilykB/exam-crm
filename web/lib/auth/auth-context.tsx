@@ -25,11 +25,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<AuthStatus>('loading');
 
-  // Silent renew on app start: restore the session from the refresh cookie.
   useEffect(() => {
     let active = true;
     authService.restoreSession().then((restored) => {
-      if (!active) return;
+      if (!active) {return;}
       setUser(restored);
       setStatus(restored ? 'authenticated' : 'unauthenticated');
     });
@@ -60,6 +59,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  if (!context) {throw new Error('useAuth must be used within AuthProvider');}
   return context;
 }

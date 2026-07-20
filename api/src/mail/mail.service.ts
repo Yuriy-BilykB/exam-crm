@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
+import { AppConfigService } from '../config/app-config.service';
 
 type Transporter = nodemailer.Transporter<SMTPTransport.SentMessageInfo>;
 
@@ -9,10 +10,13 @@ export type ActionMailType = 'activate' | 'recovery';
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private readonly from = process.env.MAIL_FROM || 'CRM <no-reply@crm.local>';
+  private readonly from: string;
   private transporterPromise: Promise<Transporter | null> | null = null;
 
-  /** Lazily build and memoize the transport (Ethereal setup is async). */
+  constructor(private readonly config: AppConfigService) {
+    this.from = config.mailFrom;
+  }
+
   private getTransport(): Promise<Transporter | null> {
     if (!this.transporterPromise) {
       this.transporterPromise = this.createTransport();
@@ -21,23 +25,20 @@ export class MailService {
   }
 
   private async createTransport(): Promise<Transporter | null> {
-    const host = process.env.SMTP_HOST;
+    const host = this.config.smtpHost;
 
     if (host) {
       return nodemailer.createTransport({
         host,
-        port: Number(process.env.SMTP_PORT) || 587,
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: process.env.SMTP_USER
-          ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        port: this.config.smtpPort,
+        secure: this.config.smtpSecure,
+        auth: this.config.smtpUser
+          ? { user: this.config.smtpUser, pass: this.config.smtpPass }
           : undefined,
       });
     }
 
-    // No SMTP configured: in dev, spin up a throwaway Ethereal account so the
-    // email can be previewed in the browser (no signup, no real inbox). In
-    // production we skip sending instead.
-    if (process.env.NODE_ENV === 'production') {
+    if (this.config.isProduction) {
       this.logger.warn('SMTP not configured — emails will be skipped');
       return null;
     }
@@ -62,11 +63,6 @@ export class MailService {
     }
   }
 
-  /**
-   * Send the activation/recovery link to the manager.
-   * Returns true if the email was sent, false if sending is off or failed —
-   * the caller still has the link to copy/share manually.
-   */
   async sendActionLink(
     to: string,
     link: string,
@@ -93,7 +89,6 @@ export class MailService {
         `,
       });
 
-      // Ethereal returns a preview URL — open it to view the sent email.
       const preview = nodemailer.getTestMessageUrl(info);
       if (preview) this.logger.log(`Preview email: ${preview}`);
 

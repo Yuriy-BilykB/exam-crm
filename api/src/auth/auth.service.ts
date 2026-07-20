@@ -4,13 +4,14 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { UserService, SafeUser } from '../user/user.service';
+import { UserService } from '../user/user.service';
 import { TokenService, AuthTokens } from '../token/token.service';
 import { UserRole } from '../common/enums';
 import { LoginDto, SetPasswordDto } from './dto/auth.dto';
+import { UserResponse } from 'src/user/dto/user.dto';
 
 export type LoginResult = AuthTokens & {
-  user: SafeUser;
+  user: UserResponse;
 };
 
 @Injectable()
@@ -20,7 +21,7 @@ export class AuthService {
     private readonly tokenService: TokenService,
   ) {}
 
-  async validateUser(email, password): Promise<SafeUser | null> {
+  async validateUser(email, password): Promise<UserResponse | null> {
     const user = await this.userService.findByEmail(email);
     if (!user) {
       return null;
@@ -32,14 +33,13 @@ export class AuthService {
       throw new UnauthorizedException('User is not activated');
     }
     if (!user.password) {
-      // account has no password set yet (invited, not activated)
       return null;
     }
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return null;
     }
-    return this.userService.toSafeUser(user);
+    return user;
   }
 
   async login({ email, password }: LoginDto): Promise<LoginResult> {
@@ -47,11 +47,11 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Invalid email or password');
     }
-    const tokens = this.tokenService.generateAuthTokens(user);
-    return { ...tokens, user };
+    const updatedUser = await this.userService.touchLastLogin(user.id);
+    const tokens = this.tokenService.generateAuthTokens(updatedUser);
+    return { ...tokens, user: updatedUser };
   }
 
-  /** Verify a refresh token (from cookie) and issue a fresh token pair */
   async refreshTokens(refreshToken: string | undefined): Promise<LoginResult> {
     const { userId } = this.tokenService.verifyRefreshToken(refreshToken);
     const user = await this.userService.findOne(userId);
@@ -62,16 +62,15 @@ export class AuthService {
     return { ...tokens, user };
   }
 
-  async getProfile(userId: string): Promise<SafeUser> {
+  async getProfile(userId: string): Promise<UserResponse> {
     const user = await this.userService.findOne(userId);
     if (!user) throw new UnauthorizedException('Session no longer valid');
     return user;
   }
 
-  /** Set password from activate/recovery token */
   async setPassword({
     token,
-    password: newPassword,
+    password,
   }: SetPasswordDto): Promise<{ message: string }> {
     const { tokenType, userId } = this.tokenService.verifyActionToken(token);
     const user = await this.userService.findOne(userId);
@@ -79,8 +78,8 @@ export class AuthService {
       throw new BadRequestException('User not found');
     }
     await this.userService.update(userId, {
-      password: newPassword,
-      ...(tokenType === 'activate' ? { isActive: true } : {}),
+      password,
+      ...(tokenType === 'activate' && { isActive: true }),
     });
     return {
       message:

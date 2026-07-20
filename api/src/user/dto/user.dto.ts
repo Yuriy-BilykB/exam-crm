@@ -2,11 +2,28 @@ import {
   IsBoolean,
   IsEmail,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
+  Min,
   MinLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { UserRole } from '../../common/enums';
+
+export class PaginationDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit = 25;
+}
 
 export class CreateUserDto {
   @IsEmail()
@@ -28,7 +45,6 @@ export class CreateUserDto {
   role: UserRole;
 }
 
-/** For admin creating a manager (no password - will be set via activation) */
 export class CreateManagerDto {
   @IsEmail()
   email: string;
@@ -62,4 +78,16 @@ export class UpdateUserDto {
   @IsOptional()
   @IsBoolean()
   isBanned?: boolean;
+}
+
+export class UserResponse {
+  id: string;
+  email: string;
+  name: string | null;
+  surname: string | null;
+  role: UserRole;
+  isActive: boolean;
+  isBanned: boolean;
+  createdAt: Date;
+  lastLogin: Date | null;
 }

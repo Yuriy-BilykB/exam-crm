@@ -2,10 +2,10 @@ import { CookieOptions } from 'express';
 
 export const refreshCookieKey = 'refresh_token';
 
-export const refreshCookieOptions: CookieOptions = {
+export const buildRefreshCookieOptions = (secure: boolean): CookieOptions => ({
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
+  secure,
   sameSite: 'lax',
-  path: '/auth',
+  path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000,
-};
+});

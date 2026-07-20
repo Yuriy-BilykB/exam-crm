@@ -1,9 +1,14 @@
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 
+export interface SetPasswordPayload {
+  token: string;
+  password: string;
+}
+
 export function useSetPassword() {
   return useMutation({
-    mutationFn: (vars: { token: string; password: string }) =>
-      api.post('/auth/set-password', vars),
+    mutationFn: (payload: SetPasswordPayload) =>
+      api.post('/auth/set-password', payload),
   });
 }

@@ -13,6 +13,6 @@ export class AdminController {
 
   @Get('stats')
   getStats() {
-    return this.adminService.getStatsByStatus();
+    return this.adminService.getManagerStatsByStatus();
   }
 }

@@ -2,19 +2,12 @@
 
 import { useState } from 'react';
 import type { Order, OrderDetail, CommentItem } from '@/services/orders.service';
+import { OrderStatusLabels, CourseFormatLabels, CourseTypeLabels } from '@/lib/reference/lists';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useToggleState } from '@/hooks/useToggler';
 import { useOrderDetail } from '@/hooks/orders/useOrderDetail';
 import { useOrderActions } from '@/hooks/orders/useOrderActions';
-
-function formatDate(dateString: string | null) {
-  if (!dateString) return '';
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-  });
-}
+import { formatDate } from '@/lib/utils/dates';
 
 type Props = {
   order: Order,
@@ -37,21 +30,25 @@ export default function OrderRow({
   const { data: detail, isPending: loading } = useOrderDetail(order.id, isExpanded);
 
   const toggleExpand = () => {
-    isExpanded ? closeExpanded() : openExpanded();
+    if (isExpanded) {
+      closeExpanded();
+    } else {
+      openExpanded();
+    }
   };
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!comment.trim() || addComment.isPending) return;
+    if (!comment.trim() || addComment.isPending) {return;}
     await addComment.mutateAsync({ orderId: order.id, comment: comment.trim() });
     setComment('');
   };
 
   const display = {
-    course: order.course?.code ?? '—',
-    format: order.format?.name ?? '—',
-    type: order.type?.name ?? '—',
-    status: order.status?.name ?? '—',
+    course: order.course ?? '—',
+    format: order.courseFormat ? CourseFormatLabels[order.courseFormat] : '—',
+    type: order.courseType ? CourseTypeLabels[order.courseType] : '—',
+    status: order.status ? OrderStatusLabels[order.status] : '—',
     manager: order.manager?.name ?? '—',
     group: order.group?.name ?? '—',
   };
@@ -74,10 +71,10 @@ export default function OrderRow({
         <td className="px-4 py-3">
           <span
             className={`px-2 py-1 rounded text-xs ${
-              display.status === 'In work' ? 'bg-yellow-100 text-yellow-800' :
-              display.status === 'New' ? 'bg-blue-100 text-blue-800' :
-              display.status === 'Aggre' ? 'bg-green-100 text-green-800' :
-              display.status === 'Disaggre' ? 'bg-red-100 text-red-800' :
+              order.status === 'In work' ? 'bg-yellow-100 text-yellow-800' :
+              order.status === 'New' ? 'bg-blue-100 text-blue-800' :
+              order.status === 'Agree' ? 'bg-green-100 text-green-800' :
+              order.status === 'Disagree' ? 'bg-red-100 text-red-800' :
               'bg-gray-100 text-gray-800'
             }`}
           >
@@ -88,7 +85,7 @@ export default function OrderRow({
         <td className="px-4 py-3">{order.alreadyPaid ?? '—'}</td>
         <td className="px-4 py-3">{display.manager}</td>
         <td className="px-4 py-3">{display.group}</td>
-        <td className="px-4 py-3 whitespace-nowrap">{formatDate(order.created_at)}</td>
+        <td className="px-4 py-3 whitespace-nowrap">{formatDate(order.createdAt)}</td>
       </tr>
       {isExpanded && (
         <tr className="text-gray-900">
@@ -106,7 +103,7 @@ export default function OrderRow({
                     <div className="space-y-2 mb-4">
                       {detail.comments.map((c: CommentItem) => (
                         <div key={c.id} className="bg-white rounded p-2 text-sm border text-gray-900">
-                          <p>{c.comment ?? ''}</p>
+                          <p>{c.text}</p>
                           <p className="text-gray-500 text-xs mt-1">
                             {c.user?.name ?? 'User'} — {formatDate(c.createdAt)}
                           </p>
@@ -141,7 +138,7 @@ export default function OrderRow({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (detail && onEditClick) onEditClick(order, detail);
+                    if (detail && onEditClick) {onEditClick(order, detail);}
                   }}
                   className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
                 >

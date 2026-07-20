@@ -1,33 +1,30 @@
 'use client';
 
-interface PaginationProps {
+interface Props {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
 }
 
-export default function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
+export default function Pagination({ currentPage, totalPages, onPageChange }: Props) {
   const getPageNumbers = (): (number | string)[] => {
     if (totalPages <= 7) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
-    // First page: [1] [2] [3] [4] [5] [6] [7] ... [last] [>]
     if (currentPage <= 4) {
       const pages: (number | string)[] = [];
-      for (let i = 1; i <= 7; i++) pages.push(i);
+      for (let i = 1; i <= 7; i++) {pages.push(i);}
       pages.push('...');
       pages.push(totalPages);
       return pages;
     }
-    // Last page / second half: [<] [1] ... [14] [15] [16] [17] [18] [19] [20]
     if (currentPage >= totalPages - 3) {
       const pages: (number | string)[] = [1, '...'];
-      for (let i = totalPages - 6; i <= totalPages; i++) pages.push(i);
+      for (let i = totalPages - 6; i <= totalPages; i++) {pages.push(i);}
       return pages;
     }
-    // Middle: [<] [1] ... [current-2 ... current+2] ... [last] [>]
     const pages: (number | string)[] = [1, '...'];
-    for (let i = currentPage - 2; i <= currentPage + 2; i++) pages.push(i);
+    for (let i = currentPage - 2; i <= currentPage + 2; i++) {pages.push(i);}
     pages.push('...');
     pages.push(totalPages);
     return pages;
@@ -47,17 +44,10 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
         </button>
       )}
       {pageNumbers.map((page, index) =>
-        page === '...' ? (
-          <span
-            key={`ellipsis-${index}`}
-            className="w-10 h-10 flex items-center justify-center text-gray-500"
-          >
-            ...
-          </span>
-        ) : (
+        typeof page === 'number' ? (
           <button
             key={page}
-            onClick={() => onPageChange(page as number)}
+            onClick={() => onPageChange(page)}
             className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors ${
               currentPage === page
                 ? 'bg-green-600 text-white'
@@ -66,6 +56,13 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
           >
             {page}
           </button>
+        ) : (
+          <span
+            key={`ellipsis-${index}`}
+            className="w-10 h-10 flex items-center justify-center text-gray-500"
+          >
+            ...
+          </span>
         )
       )}
       {currentPage < totalPages && (

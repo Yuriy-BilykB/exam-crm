@@ -23,8 +23,6 @@ const fieldClass =
 export default function SetPasswordForm({ title, submitLabel, successMessage }: Props) {
   const params = useParams();
   const router = useRouter();
-  // A `[token]` segment is a string, but useParams types it as string | string[]
-  // (catch-all routes can be arrays) — normalize to a single string.
   const token = Array.isArray(params.token) ? params.token[0] : params.token;
 
   const {
