@@ -66,13 +66,15 @@ export default function ManagerCard({
           )}
           <button
             onClick={handleBan}
-            className="px-3 py-1.5 border border-green-500 text-green-500 rounded text-sm hover:bg-green-50"
+            disabled={manager.isBanned}
+            className="px-3 py-1.5 border border-green-500 text-green-500 rounded text-sm hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
           >
             BAN
           </button>
           <button
             onClick={handleUnban}
-            className="px-3 py-1.5 border border-green-500 text-green-500 rounded text-sm hover:bg-green-50"
+            disabled={!manager.isBanned}
+            className="px-3 py-1.5 border border-green-500 text-green-500 rounded text-sm hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
           >
             UNBAN
           </button>
