@@ -32,14 +32,17 @@ export class AdminService {
     page: number,
     limit: number,
   ): Promise<{ data: UserResponse[]; total: number }> {
+    const where: Prisma.UserWhereInput = {
+      role: { in: [UserRole.MANAGER, UserRole.ADMIN] },
+    };
     const [data, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
-        where: { role: UserRole.MANAGER },
-        orderBy: { id: 'desc' },
+        where,
+        orderBy: [{ role: 'asc' }, { id: 'desc' }],
         skip: (page - 1) * limit,
         take: limit,
       }),
-      this.prisma.user.count({ where: { role: UserRole.MANAGER } }),
+      this.prisma.user.count({ where }),
     ]);
     return { data, total };
   }

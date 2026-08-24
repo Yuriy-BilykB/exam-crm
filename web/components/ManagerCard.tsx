@@ -23,6 +23,7 @@ export default function ManagerCard({
 }: Props) {
   const { data: stats = [] } = useManagerStats(manager.id);
   const total = stats.reduce((acc, s) => acc + s.count, 0);
+  const isAdmin = manager.role === 'admin';
 
   const handleActivate = useCallback(() => onActivate(manager.id), [onActivate, manager.id]);
   const handleRecovery = useCallback(() => onRecovery(manager.id), [onRecovery, manager.id]);
@@ -45,36 +46,38 @@ export default function ManagerCard({
           ))}
         </p>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {!manager.isActive && (
+      {!isAdmin && (
+        <div className="flex flex-wrap gap-2">
+          {!manager.isActive && (
+            <button
+              onClick={handleActivate}
+              className="px-3 py-1.5 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+            >
+              ACTIVATE
+            </button>
+          )}
+          {manager.isActive && (
+            <button
+              onClick={handleRecovery}
+              className="px-3 py-1.5 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+            >
+              RECOVERY PASSWORD
+            </button>
+          )}
           <button
-            onClick={handleActivate}
-            className="px-3 py-1.5 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+            onClick={handleBan}
+            className="px-3 py-1.5 border border-green-500 text-green-500 rounded text-sm hover:bg-green-50"
           >
-            ACTIVATE
+            BAN
           </button>
-        )}
-        {manager.isActive && (
           <button
-            onClick={handleRecovery}
-            className="px-3 py-1.5 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+            onClick={handleUnban}
+            className="px-3 py-1.5 border border-green-500 text-green-500 rounded text-sm hover:bg-green-50"
           >
-            RECOVERY PASSWORD
+            UNBAN
           </button>
-        )}
-        <button
-          onClick={handleBan}
-          className="px-3 py-1.5 border border-green-500 text-green-500 rounded text-sm hover:bg-green-50"
-        >
-          BAN
-        </button>
-        <button
-          onClick={handleUnban}
-          className="px-3 py-1.5 border border-green-500 text-green-500 rounded text-sm hover:bg-green-50"
-        >
-          UNBAN
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
