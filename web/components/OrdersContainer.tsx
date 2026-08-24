@@ -55,6 +55,11 @@ export default function OrdersContainer({ data, params, setParams }: Props) {
 
   const [isModalOpen, openModal, closeModal] = useToggleState(false);
   const [editOrder, setEditOrder] = useState<OrderDetail | null>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
+
+  const handleToggleExpand = (orderId: number) => {
+    setExpandedOrderId((current) => (current === orderId ? null : orderId));
+  };
 
   const handleEditClick = (_order: Order, detail: OrderDetail) => {
     setEditOrder(detail);
@@ -104,6 +109,8 @@ export default function OrdersContainer({ data, params, setParams }: Props) {
               <OrderRow
                 key={order.id}
                 order={order}
+                isExpanded={expandedOrderId === order.id}
+                onToggleExpand={handleToggleExpand}
                 onEditClick={handleEditClick}
               />
             ))}

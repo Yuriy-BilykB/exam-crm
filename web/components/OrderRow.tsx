@@ -4,21 +4,23 @@ import { useState } from 'react';
 import type { Order, OrderDetail, CommentItem } from '@/services/orders.service';
 import { OrderStatusLabels, CourseFormatLabels, CourseTypeLabels } from '@/lib/reference/lists';
 import { useAuth } from '@/lib/auth/auth-context';
-import { useToggleState } from '@/hooks/useToggler';
 import { useOrderDetail } from '@/hooks/orders/useOrderDetail';
 import { useOrderActions } from '@/hooks/orders/useOrderActions';
 import { formatDate } from '@/lib/utils/dates';
 
 type Props = {
   order: Order,
+  isExpanded: boolean,
+  onToggleExpand: (orderId: number) => void,
   onEditClick?: (order: Order, detail: OrderDetail) => void
 }
 
 export default function OrderRow({
   order,
+  isExpanded,
+  onToggleExpand,
   onEditClick,
 }: Props) {
-  const [isExpanded, openExpanded, closeExpanded] = useToggleState(false);
   const [comment, setComment] = useState('');
 
   const { user } = useAuth();
@@ -29,13 +31,7 @@ export default function OrderRow({
 
   const { data: detail, isPending: loading } = useOrderDetail(order.id, isExpanded);
 
-  const toggleExpand = () => {
-    if (isExpanded) {
-      closeExpanded();
-    } else {
-      openExpanded();
-    }
-  };
+  const toggleExpand = () => onToggleExpand(order.id);
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
