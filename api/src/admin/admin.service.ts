@@ -102,10 +102,13 @@ export class AdminService {
       where,
       _count: { _all: true },
     });
-    return grouped.map((group) => ({
-      statusName: group.status ?? 'No status',
-      count: group._count._all,
-    }));
+
+    const counts = new Map<string, number>();
+    for (const group of grouped) {
+      const statusName = group.status ?? 'New';
+      counts.set(statusName, (counts.get(statusName) ?? 0) + group._count._all);
+    }
+    return Array.from(counts, ([statusName, count]) => ({ statusName, count }));
   }
 
   getManagerStatsByStatus() {

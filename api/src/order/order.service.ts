@@ -52,7 +52,13 @@ export class OrderService {
     if (query.surname) where.surname = { contains: query.surname };
     if (query.email) where.email = { contains: query.email };
     if (query.phone) where.phone = { contains: query.phone };
-    if (query.status) where.status = query.status;
+    if (query.status) {
+      if (query.status === 'New') {
+        where.OR = [{ status: 'New' }, { status: null }];
+      } else {
+        where.status = query.status;
+      }
+    }
     if (query.course) where.course = query.course;
     if (query.format) where.courseFormat = query.format;
     if (query.type) where.courseType = query.type;
