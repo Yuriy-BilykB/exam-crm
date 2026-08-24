@@ -158,7 +158,9 @@ export class OrderService {
         'You can only edit orders without a manager or assigned to you',
       );
     }
-    await this.prisma.order.update({ where: { id }, data: dto });
+    const data: Prisma.OrderUncheckedUpdateInput = { ...dto };
+    if (order.managerId == null) data.managerId = currentUserId;
+    await this.prisma.order.update({ where: { id }, data });
 
     return this.getOrder(id);
   }
