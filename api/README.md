@@ -1,90 +1,103 @@
 # CRM Programming School — API
 
-Backend на NestJS + TypeORM + MySQL для CRM заявок та менеджерів.
+Backend built with NestJS + Prisma + MySQL/MariaDB for the CRM orders & managers app.
 
-## Вимоги
+## Requirements
 
 - Node.js 18+
-- MySQL (локально або хмарна БД за ТЗ: http://owu.linkpc.net/mysql)
+- MySQL/MariaDB (local or the cloud DB from the assignment: http://owu.linkpc.net/mysql)
 
-## Встановлення
+## Installation
 
 ```bash
 cd api
 npm install
 ```
 
-## Налаштування
+## Configuration
 
-1. Скопіюйте `.env.example` у `.env`:
+1. Copy `.env.example` to `.env`:
    ```bash
    cp .env.example .env
    ```
-2. Вкажіть у `.env` параметри підключення до MySQL (`DB_HOST`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`).
+2. Fill in `.env`:
+   - `DATABASE_URL` — Prisma connection string to MySQL/MariaDB
+   - `JWT_SECRET`, `JWT_REFRESH_SECRET` — token signing secrets
+   - `FRONTEND_URL` — used for CORS and links sent to managers (default `http://localhost:3000`)
+   - `COOKIE_SECURE` — set to `true` behind HTTPS
+   - `PORT` — API port (default `5050`)
+   - `SMTP_*`, `MAIL_FROM` — mail sending (currently disabled in code; safe to leave empty)
+3. Apply the Prisma schema:
+   ```bash
+   npm run prisma:generate
+   npm run prisma:migrate
+   ```
 
-## Запуск
+## Running
 
 ```bash
-# Режим розробки
+# Development
 npm run start:dev
 
-# Збірка та продакшн
+# Build & production
 npm run build
 npm run start:prod
 ```
 
-Сервер за замовчуванням: **http://localhost:5000**
+Default server address: **http://localhost:5050**
 
-## Документація API
+## API documentation
 
-- Опис ендпоінтів — у цьому README та в колекції Postman.
-- Опційно: встановіть `@nestjs/swagger` і підключіть Swagger у `main.ts` — документація буде доступна за адресою `/api/docs`.
+- Swagger UI is served at **`/api/docs`** once the server is running.
+- A Postman collection is also available (see below).
 
 ## Postman
 
-У репозиторії є колекція для Postman:
+The repo includes a Postman collection:
 
-- Файл: **postman/CRM-API.postman_collection.json**
+- File: **postman/CRM-API.postman_collection.json**
 
-Імпортуйте її в Postman. Для захищених ендпоінтів спочатку виконайте **Auth → Login** (admin@gmail.com / admin), потім у змінній колекції збережеться `access_token` і його можна використовувати в Bearer для інших запитів.
+Import it into Postman. For protected endpoints, run **Auth → Login** first (admin@gmail.com / admin) — the collection variable `access_token` will be saved and reused as a Bearer token for other requests.
 
-## Дефолтний адмін
+## Default admin
 
-Після першого запуску створюється користувач:
+On application startup, a default admin user is created (or reactivated) automatically:
 
-- **Email:** admin@gmail.com  
-- **Password:** admin  
+- **Email:** admin@gmail.com
+- **Password:** admin
 
-(Пароль збережено як bcrypt hash у БД.)
+(The password is stored as a bcrypt hash in the DB.)
 
-## Основні ендпоінти
+## Main endpoints
 
-| Метод | Шлях | Опис |
-|-------|------|------|
-| POST | /auth/login | Логін (email, password) |
-| GET | /auth/me | Поточний користувач (Bearer) |
-| POST | /auth/set-password | Встановити пароль за токеном активації/відновлення |
-| GET | /courses | Список курсів |
-| GET | /course-formats | Формати курсів |
-| GET | /course-types | Типи курсів |
-| GET | /statuses | Статуси |
-| GET/POST | /groups | Список груп / створити групу |
-| GET | /orders | Заявки (пагінація, сортування, фільтри) |
-| GET | /orders/export | Експорт заявок у Excel |
-| GET | /orders/:id | Одна заявка (з коментарями) |
-| PATCH | /orders/:id | Оновити заявку |
-| GET | /orders/:id/comments | Коментарі заявки |
-| POST | /orders/:id/comments | Додати коментар (призначити себе менеджером) |
-| GET | /admin/managers | Список менеджерів (пагінація, тільки admin) |
-| POST | /admin/managers | Створити менеджера |
-| GET | /admin/stats | Статистика по статусах |
-| GET | /admin/managers/:id/stats | Статистика по менеджеру |
-| POST | /admin/managers/:id/activate | Посилання для активації |
-| POST | /admin/managers/:id/recovery | Посилання для відновлення пароля |
-| POST | /admin/managers/:id/ban | Заблокувати |
-| POST | /admin/managers/:id/unban | Розблокувати |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /auth/login | Login (email, password) |
+| POST | /auth/refresh | Refresh the access token via the refresh cookie |
+| POST | /auth/logout | Clear the refresh cookie |
+| POST | /auth/set-password | Set a password via an activation/recovery token |
+| GET | /auth/me | Current user (Bearer) |
+| GET/POST | /groups | List groups / create a group |
+| GET | /orders | Orders (pagination, sorting, filters) |
+| GET | /orders/export | Export orders to Excel |
+| GET | /orders/:id | Single order (with comments) |
+| PATCH | /orders/:id | Update an order |
+| GET | /orders/:id/comments | Order comments |
+| POST | /orders/:id/comments | Add a comment (claims the order if unassigned) |
+| GET | /users/:id | Get a user by id |
+| GET | /admin/stats | Order counts grouped by status (admin only) |
+| GET | /admin/managers | List managers/admins (pagination, admin only) |
+| POST | /admin/managers | Create a manager |
+| GET | /admin/managers/:id/stats | Order stats for one manager |
+| POST | /admin/managers/:id/activate | Get an activation link |
+| POST | /admin/managers/:id/recovery | Get a password-recovery link |
+| POST | /admin/managers/:id/ban | Ban a user |
+| POST | /admin/managers/:id/unban | Unban a user |
 
-## Схема БД
+Course/format/type/status values are not served by their own endpoints — they're plain string fields on `Order`, defined as fixed lists in code (`src/common/enums.ts` on the backend, `lib/reference/lists.ts` on the frontend).
 
-Таблиці: `users`, `courses`, `course_formats`, `course_types`, `statuses`, `groups_table`, `orders`, `comments`.  
-При першому запуску `synchronize: true` створить таблиці; для продакшну варто вимкнути і використовувати міграції або імпорт дампа за ТЗ.
+## DB schema
+
+Tables: `users`, `orders`, `comments`, `groups`, `activation_tokens`.
+
+Schema changes are managed with Prisma Migrate (`prisma/migrations`), not schema sync — run `npm run prisma:migrate` after pulling schema changes.
