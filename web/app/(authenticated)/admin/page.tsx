@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { parseAsInteger, useQueryState } from 'nuqs';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useAdminStats } from '@/hooks/admin/useAdminStats';
 import { useAdminManagers } from '@/hooks/admin/useAdminManagers';
@@ -15,7 +16,7 @@ export default function AdminPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [createModalOpen, openCreateModal, closeCreateModal] = useToggleState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useQueryState('page', parseAsInteger.withDefault(1));
 
   const isAdmin = user?.role === 'admin';
 
