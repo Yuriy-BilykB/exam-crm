@@ -6,6 +6,7 @@ import {
   Body,
   Query,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -46,8 +47,8 @@ export class AdminManagersController {
   }
 
   @Post(':id/ban')
-  banManager(@Param('id') id: string) {
-    return this.adminService.banManager(id);
+  banManager(@Param('id') id: string, @Req() req: { user: { id: string } }) {
+    return this.adminService.banManager(id, req.user.id);
   }
 
   @Post(':id/unban')
