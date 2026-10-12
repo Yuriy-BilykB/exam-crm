@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { TokenService } from '../token/token.service';
 import { PrismaService } from '../database/prisma.service';
@@ -89,7 +93,10 @@ export class AdminService {
     return { link, emailSent };
   }
 
-  async banManager(userId: string) {
+  async banManager(userId: string, adminId: string) {
+    if (userId === adminId) {
+      throw new ForbiddenException('You can`t block yourself');
+    }
     return await this.userService.update(userId, { isBanned: true });
   }
 
