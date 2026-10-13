@@ -11,6 +11,7 @@ import {
 import type { Request } from 'express';
 import { CommentService } from './comment.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AddCommentDto } from './Comment.dto';
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
@@ -25,7 +26,7 @@ export class CommentController {
   @Post(':orderId/comments')
   addComment(
     @Param('orderId', ParseIntPipe) orderId: number,
-    @Body() body: { comment: string },
+    @Body() body: AddCommentDto,
     @Req() req: Request & { user: { id: string } },
   ) {
     return this.commentService.addComment({
