@@ -52,8 +52,13 @@ export class OrderController {
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrderDto,
-    @Req() req: Request & { user: { id: string } },
+    @Req() req: Request & { user: { id: string; role: string } },
   ) {
-    return this.orderService.update(id, dto, req.user.id);
+    return this.orderService.update({
+      id,
+      dto,
+      currentUserId: req.user.id,
+      role: req.user.role,
+    });
   }
 }

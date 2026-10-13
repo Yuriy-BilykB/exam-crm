@@ -7,6 +7,14 @@ import * as ExcelJS from 'exceljs';
 import { PrismaService } from '../database/prisma.service';
 import { UpdateOrderDto, OrderListQueryDto } from './dto/order.dto';
 import type { Prisma } from '../generated/prisma/client';
+import { OrderStatusValues, UserRole } from 'src/common/enums';
+
+type UpdateOrderType = {
+  id: number;
+  dto: UpdateOrderDto;
+  currentUserId: string;
+  role: string;
+};
 
 const ORDER_SELECT = {
   id: true,
@@ -148,18 +156,29 @@ export class OrderService {
     });
   }
 
-  async update(id: number, dto: UpdateOrderDto, currentUserId: string) {
+  async update({ id, dto, currentUserId, role }: UpdateOrderType) {
     const order = await this.prisma.order.findUnique({ where: { id } });
+
+    const isAdmin = role === UserRole.ADMIN;
+
     if (!order) {
       throw new NotFoundException('Order not found');
     }
-    if (order.managerId != null && order.managerId !== currentUserId) {
+    if (
+      !isAdmin &&
+      order.managerId != null &&
+      order.managerId !== currentUserId
+    ) {
       throw new ForbiddenException(
         'You can only edit orders without a manager or assigned to you',
       );
     }
     const data: Prisma.OrderUncheckedUpdateInput = { ...dto };
-    if (order.managerId == null) data.managerId = currentUserId;
+
+    if (dto.status === OrderStatusValues[1]) {
+      data.managerId = null;
+    }
+
     await this.prisma.order.update({ where: { id }, data });
 
     return this.getOrder(id);
