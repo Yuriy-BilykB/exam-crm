@@ -90,8 +90,8 @@ export default function OrderRow({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-gray-800"><strong>Message:</strong> {detail?.message ?? 'null'}</p>
-                  <p className="text-sm text-gray-800 mt-1"><strong>UTM:</strong> {detail?.utm ?? 'null'}</p>
+                  <p className="text-sm text-gray-800"><strong>Message:</strong> {detail?.message ?? '—'}</p>
+                  <p className="text-sm text-gray-800 mt-1"><strong>UTM:</strong> {detail?.utm ?? '—'}</p>
                 </div>
                 <div>
                   {detail?.comments && detail.comments.length > 0 && (

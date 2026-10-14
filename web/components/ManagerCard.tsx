@@ -8,10 +8,10 @@ import { formatDate } from '@/lib/utils/dates';
 
 type Props = {
   manager: ManagerUser;
-  onActivate: (id: number) => void;
-  onRecovery: (id: number) => void;
-  onBan: (id: number) => void;
-  onUnban: (id: number) => void;
+  onActivate: (id: string) => void;
+  onRecovery: (id: string) => void;
+  onBan: (id: string) => void;
+  onUnban: (id: string) => void;
 };
 
 export default function ManagerCard({

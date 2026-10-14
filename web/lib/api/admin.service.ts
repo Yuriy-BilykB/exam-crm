@@ -6,7 +6,7 @@ export interface OrderStatItem {
 }
 
 export interface ManagerUser {
-  id: number;
+  id: string;
   email: string;
   name: string | null;
   surname: string | null;
@@ -44,7 +44,7 @@ const adminService = {
     });
     return data;
   },
-  async getManagerStats(managerId: number): Promise<OrderStatItem[]> {
+  async getManagerStats(managerId: string): Promise<OrderStatItem[]> {
     const { data } = await api.get<OrderStatItem[]>(`/admin/managers/${managerId}/stats`);
     return data;
   },
@@ -52,19 +52,19 @@ const adminService = {
     const { data } = await api.post<ManagerUser>('/admin/managers', body);
     return data;
   },
-  async activateManager(id: number): Promise<ActionLinkResult> {
+  async activateManager(id: string): Promise<ActionLinkResult> {
     const { data } = await api.post<ActionLinkResult>(`/admin/managers/${id}/activate`);
     return data;
   },
-  async recoveryPassword(id: number): Promise<ActionLinkResult> {
+  async recoveryPassword(id: string): Promise<ActionLinkResult> {
     const { data } = await api.post<ActionLinkResult>(`/admin/managers/${id}/recovery`);
     return data;
   },
-  async banUser(id: number): Promise<ManagerUser> {
+  async banUser(id: string): Promise<ManagerUser> {
     const { data } = await api.post<ManagerUser>(`/admin/managers/${id}/ban`);
     return data;
   },
-  async unbanUser(id: number): Promise<ManagerUser> {
+  async unbanUser(id: string): Promise<ManagerUser> {
     const { data } = await api.post<ManagerUser>(`/admin/managers/${id}/unban`);
     return data;
   },
