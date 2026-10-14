@@ -9,9 +9,12 @@ export function useOrderActions() {
   const addComment = useMutation({
     mutationFn: ({ orderId, comment }: { orderId: number; comment: string }) =>
       ordersService.addComment(orderId, comment),
-    onSuccess: (_data, { orderId }) => {
-      queryClient.invalidateQueries({ queryKey: orderKeys.detail(orderId) });
-      queryClient.invalidateQueries({ queryKey: orderKeys.all });
+    onSuccess: async (_data, { orderId }) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: orderKeys.detail(orderId) }),
+        queryClient.invalidateQueries({ queryKey: orderKeys.all }),
+        queryClient.invalidateQueries({ queryKey: adminKeys.all, refetchType: 'all' }),
+      ]);
     },
   });
 

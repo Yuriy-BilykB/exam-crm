@@ -174,13 +174,24 @@ export class OrderService {
       });
       if (!group) throw new BadRequestException('Group not found');
     }
-    const data: Prisma.OrderUncheckedUpdateInput = { ...dto };
+    const data: Prisma.OrderUncheckedUpdateManyInput = { ...dto };
 
     if (dto.status === OrderStatusValues[1]) {
       data.managerId = null;
     }
 
-    await this.prisma.order.update({ where: { id }, data });
+    const { count } = await this.prisma.order.updateMany({
+      where: {
+        id,
+        OR: [{ managerId: null }, { managerId: currentUserId }],
+      },
+      data,
+    });
+    if (count === 0) {
+      throw new ForbiddenException(
+        'You can only edit orders without a manager or assigned to you',
+      );
+    }
 
     return this.getOrder(id);
   }
