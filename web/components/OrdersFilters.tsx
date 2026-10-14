@@ -26,8 +26,11 @@ interface Props {
 export default function OrdersFilters({ groups, onRefresh, isRefreshing = false }: Props) {
   const { params, setParams, listParams, resetFilters } = useOrderSearchParams();
 
-  const setFilter = (patch: Parameters<typeof setParams>[0]) => {
-    setParams({ page: 1, ...patch });
+  const setFilter = (
+    patch: Parameters<typeof setParams>[0],
+    history: 'push' | 'replace' = 'push',
+  ) => {
+    setParams({ page: 1, ...patch }, { history });
   };
 
   const exportOrders = useExportOrders();
@@ -47,7 +50,7 @@ export default function OrdersFilters({ groups, onRefresh, isRefreshing = false 
           <input
             type="text"
             value={params.name}
-            onChange={(e) => setFilter({ name: e.target.value })}
+            onChange={(e) => setFilter({ name: e.target.value }, 'replace')}
             placeholder="Name"
             className="w-full px-2 py-1.5 border border-gray-400 rounded text-sm bg-white text-gray-900 placeholder-gray-500"
           />
@@ -57,7 +60,7 @@ export default function OrdersFilters({ groups, onRefresh, isRefreshing = false 
           <input
             type="text"
             value={params.surname}
-            onChange={(e) => setFilter({ surname: e.target.value })}
+            onChange={(e) => setFilter({ surname: e.target.value }, 'replace')}
             placeholder="Surname"
             className="w-full px-2 py-1.5 border border-gray-400 rounded text-sm bg-white text-gray-900 placeholder-gray-500"
           />
@@ -67,7 +70,7 @@ export default function OrdersFilters({ groups, onRefresh, isRefreshing = false 
           <input
             type="text"
             value={params.email}
-            onChange={(e) => setFilter({ email: e.target.value })}
+            onChange={(e) => setFilter({ email: e.target.value }, 'replace')}
             placeholder="Email"
             className="w-full px-2 py-1.5 border border-gray-400 rounded text-sm bg-white text-gray-900 placeholder-gray-500"
           />
@@ -77,7 +80,7 @@ export default function OrdersFilters({ groups, onRefresh, isRefreshing = false 
           <input
             type="text"
             value={params.phone}
-            onChange={(e) => setFilter({ phone: e.target.value })}
+            onChange={(e) => setFilter({ phone: e.target.value }, 'replace')}
             placeholder="Phone"
             className="w-full px-2 py-1.5 border border-gray-400 rounded text-sm bg-white text-gray-900 placeholder-gray-500"
           />
@@ -88,7 +91,7 @@ export default function OrdersFilters({ groups, onRefresh, isRefreshing = false 
             type="number"
             min="0"
             value={params.age}
-            onChange={(e) => setFilter({ age: e.target.value })}
+            onChange={(e) => setFilter({ age: e.target.value }, 'replace')}
             placeholder="Age"
             className="w-full px-2 py-1.5 border border-gray-400 rounded text-sm bg-white text-gray-900 placeholder-gray-500"
           />
