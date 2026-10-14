@@ -4,7 +4,7 @@ Backend built with NestJS + Prisma + MySQL/MariaDB for the CRM orders & managers
 
 ## Requirements
 
-- Node.js 18+
+- Node.js 20+
 - MySQL/MariaDB (local or the cloud DB from the assignment: http://owu.linkpc.net/mysql)
 
 ## Installation
@@ -22,8 +22,8 @@ npm install
    ```
 2. Fill in `.env`:
    - `DATABASE_URL` — Prisma connection string to MySQL/MariaDB
-   - `JWT_SECRET`, `JWT_REFRESH_SECRET` — token signing secrets
-   - `FRONTEND_URL` — used for CORS and links sent to managers (default `http://localhost:3000`)
+   - `JWT_SECRET`, `JWT_REFRESH_SECRET` — token signing secrets. The example file includes development-only values; replace them outside local dev
+   - `FRONTEND_URL` — used for CORS and generated activation/recovery links (default `http://localhost:3000`)
    - `COOKIE_SECURE` — set to `true` behind HTTPS
    - `PORT` — API port (default `5050`)
    - `SMTP_*`, `MAIL_FROM` — mail sending (currently disabled in code; safe to leave empty)
@@ -57,7 +57,7 @@ The repo includes a Postman collection:
 
 - File: **postman/CRM-API.postman_collection.json**
 
-Import it into Postman. For protected endpoints, run **Auth → Login** first (admin@gmail.com / admin) — the collection variable `access_token` will be saved and reused as a Bearer token for other requests.
+Import it into Postman. For protected endpoints, run **Auth → Login** first (admin@gmail.com / admin) — the collection variable `accessToken` will be saved and reused as a Bearer token for other requests.
 
 ## Default admin
 
@@ -67,6 +67,19 @@ On application startup, a default admin user is created (or reactivated) automat
 - **Password:** admin
 
 (The password is stored as a bcrypt hash in the DB.)
+
+## Import legacy orders
+
+After applying migrations, use the UTF-8 dump in `prisma/orders.sql`:
+
+```bash
+npm run db:import-orders          # show the target and existing order count
+npm run db:import-orders -- --apply
+```
+
+The import maps the legacy columns to the current orders table and replaces its rows
+in a transaction. Comments on replaced orders are deleted; users, groups, and
+migration history are retained.
 
 ## Main endpoints
 

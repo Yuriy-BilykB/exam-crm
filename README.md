@@ -67,16 +67,21 @@ DATABASE_URL="mysql://reviewer:rev_5737ebb6b0694f137f41254e@crm-db.cniog8a4ytxr.
 
 ### Local database (optional alternative)
 
-To run against a local MySQL instead, start the bundled container (credentials come
-from the root `.env`, already in the repo), point `DATABASE_URL` at it, apply
-migrations, then load the data dump:
+To run against a local MySQL instead, start the bundled container, point
+`DATABASE_URL` at it, apply migrations, then import the orders:
 
 ```bash
+# from the repository root
 docker compose up -d
+
 # api/.env: DATABASE_URL="mysql://root:root@localhost:3306/crm_db"
-cd api && npm run prisma:migrate
-mysql -h 127.0.0.1 -u root -proot crm_db < api/prisma/dump.sql
+cd api
+npm run prisma:migrate
+npm run db:import-orders -- --apply
 ```
+
+`docker-compose.yml` defaults to `MYSQL_ROOT_PASSWORD=root` and
+`MYSQL_DATABASE=crm_db`. You can override them with environment variables if needed.
 
 ## API documentation
 
@@ -94,16 +99,18 @@ Backend env vars are validated on startup by a Zod schema
 ([`src/config/app-config.service.ts`](api/src/config/app-config.service.ts)) and
 read through a typed `AppConfigService` rather than `process.env`. A missing or
 malformed variable makes the app fail to boot with a clear error; `DATABASE_URL`
-is the only required one — the rest have defaults.
+plus `JWT_SECRET` and `JWT_REFRESH_SECRET` are required. The example file includes
+development-only JWT values, so after copying it you normally only need to fill in
+`DATABASE_URL` for local development.
 
 ### `api/.env` (see `api/.env.example`)
 
 | Variable | Description |
 |---|---|
-| `DATABASE_URL` | Prisma connection string to MySQL |
+| `DATABASE_URL` | Prisma connection string to MySQL. Required |
 | `PORT` | Backend port (default `5050`) |
 | `FRONTEND_URL` | Frontend URL, used for CORS and activation/recovery links |
-| `JWT_SECRET` / `JWT_REFRESH_SECRET` | Secrets for access / refresh tokens |
+| `JWT_SECRET` / `JWT_REFRESH_SECRET` | Secrets for access / refresh tokens. Required; `api/.env.example` includes development-only values |
 | `COOKIE_SECURE` | `true` only when served over HTTPS (marks the refresh cookie `Secure`). Leave `false` on plain HTTP |
 | `SMTP_*`, `MAIL_FROM` | Mail settings are currently unused because email sending is disabled in code. Activation and recovery endpoints return a link with `emailSent: false`; the frontend copies that link to the clipboard for the admin to share manually |
 
@@ -119,14 +126,19 @@ Per the task spec's cloud-DB requirement, the database is a managed **AWS RDS
 MySQL 8** instance. It is already provisioned and preloaded — just connect with the
 `DATABASE_URL` shown in [Database](#database) above; no deployment steps are needed.
 
-To reproduce it from scratch: create a MySQL 8 RDS instance and load the dump —
+To populate an RDS database after applying the Prisma migrations, set its
+`DATABASE_URL` in `api/.env`, then run:
 
 ```bash
-mysql -h <rds-endpoint> -u admin -p < api/prisma/dump.sql
+cd api
+npm run db:import-orders          # inspect the target and current order count
+npm run db:import-orders -- --apply
 ```
 
-The dump contains `CREATE DATABASE` / `CREATE TABLE` plus the `_prisma_migrations`
-table, so no separate migration step is required.
+`api/prisma/orders.sql` contains the original UTF-8 order rows. The import maps its
+legacy columns to the current schema and replaces existing orders in a transaction;
+comments attached to those orders are deleted by the foreign key cascade. Users,
+groups, and migration history are left intact.
 
 ## Useful commands
 
@@ -138,7 +150,7 @@ npm run build           # compile to dist/
 npm run start:prod      # run compiled build (node dist/main)
 npm run prisma:migrate  # create / apply migrations (dev)
 npm run prisma:generate # regenerate Prisma Client
-npm run db:seed         # manual seed (also runs automatically on startup)
+npm run db:import-orders # inspect the target; add -- --apply to replace its orders
 npm run lint
 ```
 
