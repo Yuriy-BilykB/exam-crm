@@ -15,13 +15,15 @@ import {
   CourseTypeList,
   CourseTypeLabels,
 } from '@/lib/reference/lists';
-import { ResetIcon, ExcelIcon } from './icons';
+import { ResetIcon, RefreshIcon, ExcelIcon } from './icons';
 
 interface Props {
   groups: Group[];
+  onRefresh: () => void;
+  isRefreshing?: boolean;
 }
 
-export default function OrdersFilters({ groups }: Props) {
+export default function OrdersFilters({ groups, onRefresh, isRefreshing = false }: Props) {
   const { params, setParams, listParams, resetFilters } = useOrderSearchParams();
 
   const setFilter = (patch: Parameters<typeof setParams>[0]) => {
@@ -192,6 +194,16 @@ export default function OrdersFilters({ groups }: Props) {
             aria-label="Reset filters"
           >
             <ResetIcon />
+          </button>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className="p-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 flex items-center justify-center"
+            title="Refresh orders"
+            aria-label="Refresh orders"
+          >
+            <RefreshIcon />
           </button>
           <button
             type="button"

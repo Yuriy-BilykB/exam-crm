@@ -7,7 +7,7 @@ import { useOrderSearchParams } from '@/hooks/useOrderSearchParams';
 export default function OrdersPage() {
   const { params, setParams, listParams } = useOrderSearchParams();
 
-  const { data, isError, isPending } = useOrdersList(listParams);
+  const { data, isError, isPending, isFetching, refetch } = useOrdersList(listParams);
 
   if (isPending) {
     return <div className="text-gray-600">Loading orders...</div>;
@@ -18,6 +18,12 @@ export default function OrdersPage() {
   }
 
   return (
-    <OrdersContainer data={data} params={params} setParams={setParams} />
+    <OrdersContainer
+      data={data}
+      params={params}
+      setParams={setParams}
+      onRefresh={() => { void refetch(); }}
+      isRefreshing={isFetching}
+    />
   );
 }

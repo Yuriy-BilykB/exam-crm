@@ -23,6 +23,18 @@ export function ResetIcon(props: IconProps) {
   );
 }
 
+// Refresh — reload current list
+export function RefreshIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M21 12a9 9 0 0 0-15.6-6.1L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M3 12a9 9 0 0 0 15.6 6.1L21 16" />
+      <path d="M16 16h5v5" />
+    </svg>
+  );
+}
+
 // Spreadsheet / Excel — export
 export function ExcelIcon(props: IconProps) {
   return (

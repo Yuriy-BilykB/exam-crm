@@ -33,9 +33,17 @@ export type Props = {
   data: OrdersResponse;
   params: ReturnType<typeof useOrderSearchParams>['params'];
   setParams: ReturnType<typeof useOrderSearchParams>['setParams'];
+  onRefresh: () => void;
+  isRefreshing: boolean;
 };
 
-export default function OrdersContainer({ data, params, setParams }: Props) {
+export default function OrdersContainer({
+  data,
+  params,
+  setParams,
+  onRefresh,
+  isRefreshing,
+}: Props) {
   const { page: currentPage, sortBy, sortOrder } = params;
   const { data: orders, total } = data;
 
@@ -84,6 +92,8 @@ export default function OrdersContainer({ data, params, setParams }: Props) {
     <>
       <OrdersFilters
         groups={groups}
+        onRefresh={onRefresh}
+        isRefreshing={isRefreshing}
       />
 
       <div className="mb-4 text-gray-600">Total orders: {total}</div>
