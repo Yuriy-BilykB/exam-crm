@@ -9,7 +9,7 @@ ban, password recovery, per-status statistics).
 
 | | |
 |---|---|
-| **Backend** | NestJS 11, Prisma 7 (MySQL), JWT auth (access token + httpOnly refresh cookie), ExcelJS, Nodemailer |
+| **Backend** | NestJS 11, Prisma 7 (MySQL), JWT auth (access token + httpOnly refresh cookie), ExcelJS |
 | **Frontend** | Next.js 16 (App Router), React Query 5, nuqs, Tailwind CSS 4 |
 | **Database** | Cloud MySQL 8 (AWS RDS), or a local MySQL via Docker |
 
@@ -105,7 +105,7 @@ is the only required one — the rest have defaults.
 | `FRONTEND_URL` | Frontend URL, used for CORS and activation/recovery links |
 | `JWT_SECRET` / `JWT_REFRESH_SECRET` | Secrets for access / refresh tokens |
 | `COOKIE_SECURE` | `true` only when served over HTTPS (marks the refresh cookie `Secure`). Leave `false` on plain HTTP |
-| `SMTP_*`, `MAIL_FROM` | SMTP for emails. If `SMTP_HOST` is empty in dev, a throwaway Ethereal account is created and the preview URL is logged; in production email is skipped and the admin copies the link manually |
+| `SMTP_*`, `MAIL_FROM` | Mail settings are currently unused because email sending is disabled in code. Activation and recovery endpoints return a link with `emailSent: false`; the frontend copies that link to the clipboard for the admin to share manually |
 
 ### `web/.env.local` (see `web/.env.example`)
 
