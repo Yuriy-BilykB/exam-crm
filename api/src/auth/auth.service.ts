@@ -1,11 +1,12 @@
-import {
-  Injectable,
-  UnauthorizedException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UserService } from '../user/user.service';
-import { TokenService, AuthTokens } from '../token/token.service';
+import {
+  TokenService,
+  AuthTokens,
+  hashActionToken,
+} from '../token/token.service';
+import { PrismaService } from '../database/prisma.service';
 import { UserRole } from '../common/enums';
 import { LoginDto, SetPasswordDto } from './dto/auth.dto';
 import { UserResponse } from 'src/user/dto/user.dto';
@@ -19,6 +20,7 @@ export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly tokenService: TokenService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async validateUser(email, password): Promise<UserResponse | null> {
@@ -73,13 +75,26 @@ export class AuthService {
     password,
   }: SetPasswordDto): Promise<{ message: string }> {
     const { tokenType, userId } = this.tokenService.verifyActionToken(token);
-    const user = await this.userService.findOne(userId);
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
-    await this.userService.update(userId, {
-      password,
-      ...(tokenType === 'activate' && { isActive: true }),
+    const passwordHash = await bcrypt.hash(password, 10);
+    await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.activationToken.deleteMany({
+        where: {
+          token: hashActionToken(token),
+          type: tokenType,
+          userId,
+          expiresAt: { gt: new Date() },
+        },
+      });
+      if (count !== 1) {
+        throw new UnauthorizedException('Token expired or already used');
+      }
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          password: passwordHash,
+          ...(tokenType === 'activate' && { isActive: true }),
+        },
+      });
     });
     return {
       message:

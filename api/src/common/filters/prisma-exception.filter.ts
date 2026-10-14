@@ -26,6 +26,11 @@ export class PrismaExceptionFilter implements ExceptionFilter {
           statusCode: HttpStatus.CONFLICT,
           message: 'Record already exists',
         });
+      case 'P2003':
+        return response.status(HttpStatus.BAD_REQUEST).json({
+          statusCode: HttpStatus.BAD_REQUEST,
+          message: 'Related record does not exist',
+        });
       default:
         this.logger.error(
           `Unhandled Prisma error ${exception.code}: ${exception.message}`,

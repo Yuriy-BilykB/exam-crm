@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -7,7 +8,7 @@ import * as ExcelJS from 'exceljs';
 import { PrismaService } from '../database/prisma.service';
 import { UpdateOrderDto, OrderListQueryDto } from './dto/order.dto';
 import type { Prisma } from '../generated/prisma/client';
-import { OrderStatusValues } from 'src/common/enums';
+import { OrderStatusValues } from '../common/enums';
 
 type UpdateOrderType = {
   id: number;
@@ -165,6 +166,13 @@ export class OrderService {
       throw new ForbiddenException(
         'You can only edit orders without a manager or assigned to you',
       );
+    }
+    if (dto.groupId !== undefined && dto.groupId !== null) {
+      const group = await this.prisma.group.findUnique({
+        where: { id: dto.groupId },
+        select: { id: true },
+      });
+      if (!group) throw new BadRequestException('Group not found');
     }
     const data: Prisma.OrderUncheckedUpdateInput = { ...dto };
 

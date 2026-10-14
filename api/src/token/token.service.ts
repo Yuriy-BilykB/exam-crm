@@ -4,7 +4,9 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { createHash, randomUUID } from 'node:crypto';
 import { AppConfigService } from '../config/app-config.service';
+import { PrismaService } from '../database/prisma.service';
 
 export type TokenType = 'activate' | 'recovery';
 
@@ -20,12 +22,18 @@ export type ActionTokenPayload = { tokenType: TokenType; userId: string };
 const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL = '7d';
 const ACTION_TOKEN_TTL = '30m';
+const ACTION_TOKEN_TTL_MS = 30 * 60 * 1000;
+
+export function hashActionToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
 
 @Injectable()
 export class TokenService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly config: AppConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
   generateAuthTokens(user: { id: string; role: string }): AuthTokens {
@@ -57,9 +65,24 @@ export class TokenService {
     }
   }
 
-  generateActionToken(userId: string, tokenType: TokenType): string {
+  async generateActionToken(
+    userId: string,
+    tokenType: TokenType,
+  ): Promise<string> {
     const payload: ActionTokenPayload = { tokenType, userId };
-    return this.jwtService.sign(payload, { expiresIn: ACTION_TOKEN_TTL });
+    const token = this.jwtService.sign(payload, {
+      expiresIn: ACTION_TOKEN_TTL,
+      jwtid: randomUUID(),
+    });
+    await this.prisma.activationToken.create({
+      data: {
+        token: hashActionToken(token),
+        type: tokenType,
+        expiresAt: new Date(Date.now() + ACTION_TOKEN_TTL_MS),
+        userId,
+      },
+    });
+    return token;
   }
 
   verifyActionToken(token: string): ActionTokenPayload {

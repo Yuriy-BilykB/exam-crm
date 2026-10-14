@@ -7,8 +7,11 @@ import {
   IsBoolean,
   IsIn,
   IsDateString,
+  IsEmail,
+  Matches,
+  MaxLength,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { Trim } from '../../common/decorators/trim.decorator';
 import {
   CourseValues,
@@ -56,7 +59,11 @@ export class OrderListQueryDto {
   sortOrder: 'ASC' | 'DESC' = 'DESC';
 
   @IsOptional()
-  @Type(() => Boolean)
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   my_orders = false;
 
@@ -116,20 +123,40 @@ export class OrderListQueryDto {
 }
 
 export class UpdateOrderDto {
-  @Trim() @IsOptional() @IsString() name?: string | null;
-  @Trim() @IsOptional() @IsString() surname?: string | null;
-  @Trim() @IsOptional() @IsString() email?: string | null;
-  @Trim() @IsOptional() @IsString() phone?: string | null;
-  @IsOptional() @Type(() => Number) @IsInt() age?: number | null;
+  @Trim()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Matches(/^[^<>]*$/, { message: 'name must not contain HTML markup' })
+  name?: string | null;
+  @Trim() @IsOptional() @IsString() @MaxLength(100) surname?: string | null;
+  @Trim() @IsOptional() @IsEmail() @MaxLength(150) email?: string | null;
+  @Trim() @IsOptional() @IsString() @MaxLength(40) phone?: string | null;
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(2147483647)
+  age?: number | null;
 
   @IsOptional() @IsIn(CourseValues) course?: string | null;
   @IsOptional() @IsIn(CourseFormatValues) courseFormat?: string | null;
   @IsOptional() @IsIn(CourseTypeValues) courseType?: string | null;
   @IsOptional() @IsIn(OrderStatusValues) status?: string | null;
 
-  @IsOptional() @IsString() groupId?: string | null;
-  @IsOptional() @Type(() => Number) @IsInt() sum?: number | null;
-  @IsOptional() @Type(() => Number) @IsInt() alreadyPaid?: number | null;
-  @Trim() @IsOptional() @IsString() utm?: string | null;
-  @Trim() @IsOptional() @IsString() message?: string | null;
+  @IsOptional() @IsString() @MaxLength(191) groupId?: string | null;
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(2147483647)
+  sum?: number | null;
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(2147483647)
+  alreadyPaid?: number | null;
+  @Trim() @IsOptional() @IsString() @MaxLength(255) utm?: string | null;
+  @Trim() @IsOptional() @IsString() @MaxLength(255) message?: string | null;
 }

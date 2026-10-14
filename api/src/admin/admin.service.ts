@@ -51,12 +51,15 @@ export class AdminService {
     return { data, total };
   }
 
-  getActivationLink(
+  async getActivationLink(
     userId: string,
     tokenType: 'activate' | 'recovery',
-  ): string {
+  ): Promise<string> {
     const baseUrl = this.config.frontendUrl;
-    const token = this.tokenService.generateActionToken(userId, tokenType);
+    const token = await this.tokenService.generateActionToken(
+      userId,
+      tokenType,
+    );
     return `${baseUrl.replace(/\/$/, '')}/${tokenType}/${token}`;
   }
 
@@ -68,7 +71,7 @@ export class AdminService {
     if (user.role !== UserRole.MANAGER) {
       throw new NotFoundException('Not a manager');
     }
-    const link = this.getActivationLink(userId, 'activate');
+    const link = await this.getActivationLink(userId, 'activate');
     // Email sending temporarily disabled — the link is copied to clipboard on the client.
     // const emailSent = await this.mailService.sendActionLink(
     //   user.email,
@@ -82,7 +85,7 @@ export class AdminService {
   async recoveryPassword(userId: string): Promise<ActivateManagerResponse> {
     const user = await this.userService.findOne(userId);
     if (!user) throw new NotFoundException('User not found');
-    const link = this.getActivationLink(userId, 'recovery');
+    const link = await this.getActivationLink(userId, 'recovery');
     // Email sending temporarily disabled — the link is copied to clipboard on the client.
     // const emailSent = await this.mailService.sendActionLink(
     //   user.email,

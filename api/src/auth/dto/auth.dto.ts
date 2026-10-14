@@ -14,5 +14,6 @@ export class SetPasswordDto {
   token: string;
 
   @IsString()
+  @MinLength(6)
   password: string;
 }

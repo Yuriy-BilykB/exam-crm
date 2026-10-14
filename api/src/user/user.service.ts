@@ -58,7 +58,7 @@ export class UserService {
 
   async update(id: string, dto: UpdateUserDto): Promise<UserResponse> {
     const data: Record<string, unknown> = { ...dto };
-    if (dto.password) {
+    if (dto.password !== undefined) {
       data.password = await bcrypt.hash(dto.password, 10);
     }
     return this.prisma.user.update({ where: { id }, data });
