@@ -16,7 +16,10 @@ export default function AdminPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [createModalOpen, openCreateModal, closeCreateModal] = useToggleState(false);
-  const [page, setPage] = useQueryState('page', parseAsInteger.withDefault(1));
+  const [page, setPage] = useQueryState(
+    'page',
+    parseAsInteger.withDefault(1).withOptions({ history: 'push' }),
+  );
 
   const isAdmin = user?.role === 'admin';
 
