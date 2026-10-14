@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service';
-import type { Prisma } from '../generated/prisma/client';
 
 type AddCommentParams = {
   orderId: number;
@@ -17,32 +16,43 @@ export class CommentService {
   constructor(private readonly prisma: PrismaService) {}
 
   async addComment({ orderId, userId, text }: AddCommentParams) {
-    const order = await this.prisma.order.findUnique({
-      where: { id: orderId },
-    });
-    if (!order) throw new NotFoundException('Order not found');
-    if (order.managerId != null && order.managerId !== userId) {
-      throw new ForbiddenException(
-        'You can only comment on orders without a manager or assigned to you',
-      );
-    }
+    return this.prisma.$transaction(async (tx) => {
+      const claim = await tx.order.updateMany({
+        where: { id: orderId, managerId: null },
+        data: { managerId: userId },
+      });
+      if (claim.count === 0) {
+        const order = await tx.order.findUnique({
+          where: { id: orderId },
+          select: { managerId: true },
+        });
+        if (!order) throw new NotFoundException('Order not found');
+        if (order.managerId !== userId) {
+          throw new ForbiddenException(
+            'You can only comment on orders without a manager or assigned to you',
+          );
+        }
+      }
 
-    const data: Prisma.OrderUpdateInput = {};
-    if (order.managerId == null) data.manager = { connect: { id: userId } };
-    if (order.status == null || order.status === 'New') data.status = 'In work';
-    if (Object.keys(data).length) {
-      await this.prisma.order.update({ where: { id: orderId }, data });
-    }
+      await tx.order.updateMany({
+        where: {
+          id: orderId,
+          managerId: userId,
+          OR: [{ status: null }, { status: 'New' }],
+        },
+        data: { status: 'In work' },
+      });
 
-    return this.prisma.comment.create({
-      data: { orderId, userId, text },
-      select: {
-        id: true,
-        orderId: true,
-        userId: true,
-        text: true,
-        createdAt: true,
-      },
+      return tx.comment.create({
+        data: { orderId, userId, text },
+        select: {
+          id: true,
+          orderId: true,
+          userId: true,
+          text: true,
+          createdAt: true,
+        },
+      });
     });
   }
 
