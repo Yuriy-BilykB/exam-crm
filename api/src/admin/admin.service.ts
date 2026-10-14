@@ -9,7 +9,7 @@ import { PrismaService } from '../database/prisma.service';
 // Email sending temporarily disabled.
 // import { MailService } from '../mail/mail.service';
 import { CreateManagerDto, UserResponse } from '../user/dto/user.dto';
-import { UserRole } from '../common/enums';
+import { OrderStatusValues, UserRole } from '../common/enums';
 import { AppConfigService } from '../config/app-config.service';
 import type { Prisma } from '../generated/prisma/client';
 
@@ -113,12 +113,17 @@ export class AdminService {
       _count: { _all: true },
     });
 
-    const counts = new Map<string, number>();
+    const counts = new Map<string, number>(
+      OrderStatusValues.map((status) => [status, 0]),
+    );
     for (const group of grouped) {
       const statusName = group.status ?? 'New';
       counts.set(statusName, (counts.get(statusName) ?? 0) + group._count._all);
     }
-    return Array.from(counts, ([statusName, count]) => ({ statusName, count }));
+    return OrderStatusValues.map((statusName) => ({
+      statusName,
+      count: counts.get(statusName) ?? 0,
+    }));
   }
 
   getManagerStatsByStatus() {

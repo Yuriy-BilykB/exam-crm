@@ -40,7 +40,7 @@ export default function ManagerCard({
         <p>is_active: {String(manager.isActive)}</p>
         <p>last_login: {formatDate(manager.lastLogin, 'null')}</p>
         <p className="text-gray-500">
-          total: {total}
+          Total: {total}
           {stats.map((s) => (
             <span key={s.statusName}> {statusLabel(s.statusName)}: {s.count}</span>
           ))}

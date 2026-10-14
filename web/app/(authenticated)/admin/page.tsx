@@ -40,7 +40,7 @@ export default function AdminPage() {
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-gray-800 mb-2">Orders statistic</h2>
         <p className="text-gray-600">
-          total: {totalOrders}
+          Total: {totalOrders}
           {stats.map((s) => (
             <span key={s.statusName} className="ml-3">
               {statusLabel(s.statusName)}: {s.count}
