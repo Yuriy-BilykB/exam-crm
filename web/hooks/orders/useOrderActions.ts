@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ordersService } from '@/services/orders.service';
 import { orderKeys } from '@/lib/query/orders.keys';
+import { adminKeys } from '@/lib/query/admin.keys';
 
 export function useOrderActions() {
   const queryClient = useQueryClient();
@@ -17,9 +18,18 @@ export function useOrderActions() {
   const updateOrder = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Record<string, unknown> }) =>
       ordersService.updateOrder(id, data),
-    onSuccess: (updated) => {
+    onSuccess: async (updated) => {
       queryClient.setQueryData(orderKeys.detail(updated.id), updated);
-      queryClient.invalidateQueries({ queryKey: orderKeys.all });
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: orderKeys.all,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: adminKeys.all,
+          refetchType: 'all',
+        }),
+      ]);
     },
   });
 
