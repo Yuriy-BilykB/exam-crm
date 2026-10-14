@@ -61,12 +61,13 @@ Import it into Postman. For protected endpoints, run **Auth → Login** first (a
 
 ## Default admin
 
-On application startup, a default admin user is created (or reactivated) automatically:
+On application startup, a default admin user is created only if it does not already exist:
 
 - **Email:** admin@gmail.com
 - **Password:** admin
 
 (The password is stored as a bcrypt hash in the DB.)
+Existing admin accounts and their passwords are not changed on startup.
 
 ## Import legacy orders
 

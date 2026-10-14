@@ -12,10 +12,6 @@ export class SeedService implements OnModuleInit {
   async onModuleInit() {
     const existing = await this.userService.findByEmail(adminEmail);
     if (existing) {
-      await this.userService.update(existing.id, {
-        password: adminPassword,
-        isActive: true,
-      });
       return;
     }
     const user = await this.userService.create({

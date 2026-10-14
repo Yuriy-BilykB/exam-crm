@@ -44,11 +44,13 @@ npm install
 npm run dev                   # http://localhost:3000
 ```
 
-Open http://localhost:3000 — you are redirected to the login page. A default admin is
-seeded automatically on backend startup:
+Open http://localhost:3000 — you are redirected to the login page. On a fresh
+database, backend startup creates a default admin:
 
 - **email:** `admin@gmail.com`
 - **password:** `admin`
+
+Later startups leave this account and its password unchanged.
 
 > The frontend (`:3000`) calls the backend (`:5050`) directly; CORS is enabled on the
 > API for `FRONTEND_URL`.

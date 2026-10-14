@@ -161,10 +161,10 @@ async function seedAdmin() {
   const password = await bcrypt.hash('admin', 10);
   await prisma.user.upsert({
     where: { email },
-    update: { password, isActive: true, role: Role.admin },
+    update: {},
     create: { email, password, name: 'Admin', role: Role.admin, isActive: true },
   });
-  console.log('✔ admin user ready (admin@gmail.com / admin)');
+  console.log('✔ admin user ready');
 }
 
 async function seedOrders() {

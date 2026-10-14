@@ -4,10 +4,14 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AccessTokenPayload } from '../../token/token.service';
 import { AppConfigService } from '../../config/app-config.service';
 import { UserRole } from '../../common/enums';
+import { PrismaService } from '../../database/prisma.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
-  constructor(config: AppConfigService) {
+  constructor(
+    config: AppConfigService,
+    private readonly prisma: PrismaService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -15,7 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  validate(payload: Partial<AccessTokenPayload>) {
+  async validate(payload: Partial<AccessTokenPayload>) {
     if (
       payload?.tokenUse !== 'access' ||
       typeof payload.userId !== 'string' ||
@@ -24,6 +28,17 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     ) {
       throw new UnauthorizedException('Invalid access token');
     }
-    return { id: payload.userId, role: payload.role };
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, role: true, isActive: true, isBanned: true },
+    });
+    if (
+      !user ||
+      user.isBanned ||
+      (!user.isActive && user.role !== UserRole.ADMIN)
+    ) {
+      throw new UnauthorizedException('User no longer allowed');
+    }
+    return { id: user.id, role: user.role };
   }
 }
