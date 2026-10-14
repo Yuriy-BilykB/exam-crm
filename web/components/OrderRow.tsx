@@ -26,10 +26,7 @@ export default function OrderRow({
   const { user } = useAuth();
   const { addComment } = useOrderActions();
 
-  const isAdmin = user?.role === 'admin';
-  const canComment =
-    !!user && (!order.manager?.id || order.manager.id === user.id);
-  const canEdit = isAdmin || canComment;
+  const canComment = user && (!order.manager?.id || order.manager.id === user.id);
 
   const { data: detail, isPending: loading } = useOrderDetail(order.id, isExpanded);
 
@@ -130,7 +127,7 @@ export default function OrderRow({
                 </div>
               </div>
             )}
-            {canEdit && (
+            {canComment && (
               <div className="mt-3">
                 <button
                   type="button"
