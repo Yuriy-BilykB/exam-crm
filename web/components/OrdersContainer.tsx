@@ -4,9 +4,11 @@ import { useState } from 'react';
 import Pagination from '@/components/Pagination';
 import OrderRow from '@/components/OrderRow';
 import EditOrderModal from '@/components/EditOrderModal';
-import OrdersFilters from '@/components/OrdersFilters';
-import type { Order, OrderDetail, OrdersResponse } from '@/services/orders.service';
-import { useGroups } from '@/hooks/reference/useReferences';
+import type {
+  Order,
+  OrderDetail,
+  OrdersResponse,
+} from '@/services/orders.service';
 import { ORDERS_PAGE_LIMIT } from '@/lib/orders-search-params';
 import type { useOrderSearchParams } from '@/hooks/useOrderSearchParams';
 import { useToggleState } from '@/hooks/useToggler';
@@ -33,17 +35,9 @@ export type Props = {
   data: OrdersResponse;
   params: ReturnType<typeof useOrderSearchParams>['params'];
   setParams: ReturnType<typeof useOrderSearchParams>['setParams'];
-  onRefresh: () => void;
-  isRefreshing: boolean;
 };
 
-export default function OrdersContainer({
-  data,
-  params,
-  setParams,
-  onRefresh,
-  isRefreshing,
-}: Props) {
+export default function OrdersContainer({ data, params, setParams }: Props) {
   const { page: currentPage, sortBy, sortOrder } = params;
   const { data: orders, total } = data;
 
@@ -58,8 +52,6 @@ export default function OrdersContainer({
   const handlePageChange = (page: number) => {
     setParams({ page });
   };
-
-  const { data: groups = [] } = useGroups();
 
   const [isModalOpen, openModal, closeModal] = useToggleState(false);
   const [editOrder, setEditOrder] = useState<OrderDetail | null>(null);
@@ -84,49 +76,51 @@ export default function OrdersContainer({
   const totalPages = Math.max(1, Math.ceil(total / ORDERS_PAGE_LIMIT));
 
   const renderSortIcon = (column: string) => {
-    if (sortBy !== column) {return null;}
+    if (sortBy !== column) {
+      return null;
+    }
     return sortOrder === 'ASC' ? ' ▲' : ' ▼';
   };
 
   return (
     <>
-      <OrdersFilters
-        groups={groups}
-        onRefresh={onRefresh}
-        isRefreshing={isRefreshing}
-      />
-
       <div className="mb-4 text-gray-600">Total orders: {total}</div>
 
-      <div className="bg-white rounded-lg shadow overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-green-500 text-white">
-            <tr>
-              {columns.map((col) => (
-                <th
-                  key={col.key}
-                  onClick={() => handleSort(col.key)}
-                  className="px-4 py-3 text-left cursor-pointer select-none hover:bg-green-600 transition-colors whitespace-nowrap"
-                >
-                  {col.label}
-                  {renderSortIcon(col.key)}
-                </th>
+      {orders.length === 0 ? (
+        <div className="bg-white py-10 text-center text-gray-600">
+          No orders found
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-green-500 text-white">
+              <tr>
+                {columns.map((col) => (
+                  <th
+                    key={col.key}
+                    onClick={() => handleSort(col.key)}
+                    className="px-4 py-3 text-left cursor-pointer select-none hover:bg-green-600 transition-colors whitespace-nowrap"
+                  >
+                    {col.label}
+                    {renderSortIcon(col.key)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <OrderRow
+                  key={order.id}
+                  order={order}
+                  isExpanded={expandedOrderId === order.id}
+                  onToggleExpand={handleToggleExpand}
+                  onEditClick={handleEditClick}
+                />
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((order) => (
-              <OrderRow
-                key={order.id}
-                order={order}
-                isExpanded={expandedOrderId === order.id}
-                onToggleExpand={handleToggleExpand}
-                onEditClick={handleEditClick}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {totalPages > 1 && (
         <Pagination
@@ -137,7 +131,11 @@ export default function OrdersContainer({
       )}
 
       {isModalOpen && editOrder && (
-        <EditOrderModal order={editOrder} onClose={handleEditClose} onSaved={handleEditSaved} />
+        <EditOrderModal
+          order={editOrder}
+          onClose={handleEditClose}
+          onSaved={handleEditSaved}
+        />
       )}
     </>
   );
