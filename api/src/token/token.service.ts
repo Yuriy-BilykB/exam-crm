@@ -15,9 +15,17 @@ export type AuthTokens = {
   refreshToken: string;
 };
 
-export type AccessTokenPayload = { userId: string; role: string };
-export type RefreshTokenPayload = { userId: string };
-export type ActionTokenPayload = { tokenType: TokenType; userId: string };
+export type AccessTokenPayload = {
+  tokenUse: 'access';
+  userId: string;
+  role: string;
+};
+export type RefreshTokenPayload = { tokenUse: 'refresh'; userId: string };
+export type ActionTokenPayload = {
+  tokenUse: 'action';
+  tokenType: TokenType;
+  userId: string;
+};
 
 const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL = '7d';
@@ -38,10 +46,14 @@ export class TokenService {
 
   generateAuthTokens(user: { id: string; role: string }): AuthTokens {
     const accessPayload: AccessTokenPayload = {
+      tokenUse: 'access',
       userId: user.id,
       role: user.role,
     };
-    const refreshPayload: RefreshTokenPayload = { userId: user.id };
+    const refreshPayload: RefreshTokenPayload = {
+      tokenUse: 'refresh',
+      userId: user.id,
+    };
     const accessToken = this.jwtService.sign(accessPayload, {
       expiresIn: ACCESS_TOKEN_TTL,
     });
@@ -57,9 +69,16 @@ export class TokenService {
       throw new UnauthorizedException('No refresh token');
     }
     try {
-      return this.jwtService.verify<RefreshTokenPayload>(refreshToken, {
-        secret: this.config.jwtRefreshSecret,
-      });
+      const payload = this.jwtService.verify<RefreshTokenPayload>(
+        refreshToken,
+        {
+          secret: this.config.jwtRefreshSecret,
+        },
+      );
+      if (payload.tokenUse !== 'refresh' || !payload.userId) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+      return payload;
     } catch {
       throw new UnauthorizedException('Refresh token expired or invalid');
     }
@@ -69,7 +88,11 @@ export class TokenService {
     userId: string,
     tokenType: TokenType,
   ): Promise<string> {
-    const payload: ActionTokenPayload = { tokenType, userId };
+    const payload: ActionTokenPayload = {
+      tokenUse: 'action',
+      tokenType,
+      userId,
+    };
     const token = this.jwtService.sign(payload, {
       expiresIn: ACTION_TOKEN_TTL,
       jwtid: randomUUID(),
@@ -87,15 +110,15 @@ export class TokenService {
 
   verifyActionToken(token: string): ActionTokenPayload {
     try {
-      const { tokenType, userId } =
+      const { tokenUse, tokenType, userId } =
         this.jwtService.verify<ActionTokenPayload>(token);
-      if (!tokenType || !userId) {
+      if (tokenUse !== 'action' || !userId) {
         throw new BadRequestException('Invalid token');
       }
       if (tokenType !== 'activate' && tokenType !== 'recovery') {
         throw new BadRequestException('Invalid token type');
       }
-      return { tokenType, userId };
+      return { tokenUse, tokenType, userId };
     } catch {
       throw new UnauthorizedException('Token expired or invalid');
     }
