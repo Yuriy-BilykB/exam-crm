@@ -23,16 +23,13 @@ export class AuthService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async validateUser(email, password): Promise<UserResponse | null> {
+  async validateUser(
+    email: string,
+    password: string,
+  ): Promise<UserResponse | null> {
     const user = await this.userService.findByEmail(email);
     if (!user) {
       return null;
-    }
-    if (user.isBanned) {
-      throw new UnauthorizedException('User is banned');
-    }
-    if (!user.isActive && user.role !== UserRole.ADMIN) {
-      throw new UnauthorizedException('User is not activated');
     }
     if (!user.password) {
       return null;
@@ -40,6 +37,12 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return null;
+    }
+    if (user.isBanned) {
+      throw new UnauthorizedException('User is banned');
+    }
+    if (!user.isActive && user.role !== UserRole.ADMIN) {
+      throw new UnauthorizedException('User is not activated');
     }
     return user;
   }

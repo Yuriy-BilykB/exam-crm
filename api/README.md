@@ -1,11 +1,12 @@
 # CRM Programming School — API
 
-Backend built with NestJS + Prisma + MySQL/MariaDB for the CRM orders & managers app.
+Backend built with NestJS + Prisma + MySQL 8 for the CRM orders & managers app.
 
 ## Requirements
 
-- Node.js 20+
-- MySQL/MariaDB (local or the cloud DB from the assignment: http://owu.linkpc.net/mysql)
+- Node.js 20.19+ (or a newer supported LTS)
+- The preloaded AWS RDS MySQL 8 database described in the
+  [root README](../README.md#database), or Docker + Docker Compose for local MySQL 8
 
 ## Installation
 
@@ -21,17 +22,51 @@ npm install
    cp .env.example .env
    ```
 2. Fill in `.env`:
-   - `DATABASE_URL` — Prisma connection string to MySQL/MariaDB
+   - `DATABASE_URL` — MySQL connection string. Use the AWS RDS connection from the
+     [root README](../README.md#database), or
+     `mysql://root:root@localhost:3306/crm_db` for the bundled local container
    - `JWT_SECRET`, `JWT_REFRESH_SECRET` — token signing secrets. The example file includes development-only values; replace them outside local dev
    - `FRONTEND_URL` — used for CORS and generated activation/recovery links (default `http://localhost:3000`)
    - `COOKIE_SECURE` — set to `true` behind HTTPS
    - `PORT` — API port (default `5050`)
    - `SMTP_*`, `MAIL_FROM` — mail sending (currently disabled in code; safe to leave empty)
-3. Apply the Prisma schema:
+3. Generate the Prisma client:
    ```bash
    npm run prisma:generate
-   npm run prisma:migrate
    ```
+4. Choose the database setup below before starting the server.
+
+## Database setup
+
+### Preloaded cloud database (AWS RDS)
+
+Set the AWS RDS `DATABASE_URL` from the [root README](../README.md#database) in
+`api/.env`. This MySQL 8 database already contains the schema, 500 task-spec orders,
+and the default admin. Start the backend directly; migrations and an order import
+are unnecessary for this existing database.
+
+### Fresh local database
+
+After installation and configuration above, run these commands **from `api/`**:
+
+```bash
+# api/.env must use DATABASE_URL="mysql://root:root@localhost:3306/crm_db"
+docker compose -f ../docker-compose.yml up -d --wait
+npx prisma migrate deploy
+npm run db:import-orders          # verify the local target and current order count
+npm run db:import-orders -- --apply
+npm run start:dev
+```
+
+The import should report `Imported 500 orders with verified Cyrillic data.`
+Backend startup creates the default admin. Log in through the frontend to see the
+orders; migrations and startup alone do not import them. The container defaults to
+`MYSQL_ROOT_PASSWORD=root` and `MYSQL_DATABASE=crm_db`; if you override these,
+update `DATABASE_URL` to match.
+
+The import replaces existing orders and deletes their comments. Use `--apply`
+only when you intend to replace those records; users and groups are retained.
+See [Import legacy orders](#import-legacy-orders) for details.
 
 ## Running
 
@@ -98,7 +133,7 @@ migration history are retained.
 | PATCH | /orders/:id | Update an order |
 | GET | /orders/:id/comments | Order comments |
 | POST | /orders/:id/comments | Add a comment (claims the order if unassigned) |
-| GET | /users/:id | Get a user by id |
+| GET | /users/:id | Get own user data, or any user's data as an admin |
 | GET | /admin/stats | Order counts grouped by status (admin only) |
 | GET | /admin/managers | List managers/admins (pagination, admin only) |
 | POST | /admin/managers | Create a manager |
@@ -114,4 +149,6 @@ Course/format/type/status values are not served by their own endpoints — they'
 
 Tables: `users`, `orders`, `comments`, `groups`, `activation_tokens`.
 
-Schema changes are managed with Prisma Migrate (`prisma/migrations`), not schema sync — run `npm run prisma:migrate` after pulling schema changes.
+Schema changes are managed with Prisma Migrate (`prisma/migrations`), not schema
+sync. Apply checked-in migrations with `npx prisma migrate deploy`, as shown
+above. `npm run prisma:migrate` is for developing new schema changes.

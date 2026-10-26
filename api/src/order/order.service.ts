@@ -121,8 +121,10 @@ export class OrderService {
         return { sum: sortOrder };
       case 'alreadyPaid':
         return { alreadyPaid: sortOrder };
-      default:
+      case 'createdAt':
         return { createdAt: sortOrder };
+      default:
+        return { id: sortOrder };
     }
   }
 

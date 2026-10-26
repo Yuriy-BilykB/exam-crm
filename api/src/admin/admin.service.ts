@@ -42,7 +42,7 @@ export class AdminService {
     const [data, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
         where,
-        orderBy: [{ role: 'asc' }, { id: 'desc' }],
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * limit,
         take: limit,
       }),

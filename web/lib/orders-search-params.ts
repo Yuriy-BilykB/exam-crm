@@ -19,7 +19,7 @@ export type SortOrder = 'ASC' | 'DESC';
 
 export const orderSearchParamsParsers = {
   page: parseAsInteger.withDefault(1),
-  sortBy: parseAsString.withDefault('createdAt'),
+  sortBy: parseAsString.withDefault('id'),
   sortOrder: parseAsStringEnum<SortOrder>(['ASC', 'DESC']).withDefault('DESC'),
   name: parseAsString.withDefault(''),
   surname: parseAsString.withDefault(''),

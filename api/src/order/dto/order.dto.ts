@@ -52,7 +52,7 @@ export class OrderListQueryDto {
     'alreadyPaid',
     'createdAt',
   ])
-  sortBy = 'createdAt';
+  sortBy = 'id';
 
   @IsOptional()
   @IsIn(['ASC', 'DESC'])

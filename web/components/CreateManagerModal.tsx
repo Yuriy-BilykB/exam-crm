@@ -74,6 +74,9 @@ export default function CreateManagerModal({ onClose, onCreate }: Props) {
               disabled={isSubmitting}
               {...register('name')}
             />
+            {errors.name && (
+              <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Surname</label>
@@ -84,6 +87,9 @@ export default function CreateManagerModal({ onClose, onCreate }: Props) {
               disabled={isSubmitting}
               {...register('surname')}
             />
+            {errors.surname && (
+              <p className="mt-1 text-sm text-red-600">{errors.surname.message}</p>
+            )}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button

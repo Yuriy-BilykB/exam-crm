@@ -11,20 +11,17 @@ import adminService, {
   type ManagersResponse,
 } from '@/lib/api/admin.service';
 import { adminKeys } from '@/lib/query/admin.keys';
+import { copyToClipboard } from '@/lib/utils/clipboard';
 
 const LIMIT = 25;
 
-async function shareActionLink({ link }: ActionLinkResult) {
-  const copied = await navigator.clipboard
-    .writeText(link)
-    .then(() => true)
-    .catch(() => false);
-
-  // Email sending temporarily disabled — the link is only copied to clipboard.
-  // if (emailSent && copied) {toast.success('Email sent and link copied');}
-  // else if (emailSent) {toast.success('Email sent');}
-  if (copied) {toast.success('Link copied');}
-  else {toast.error('Could not copy link');}
+async function shareActionLink({ link }: ActionLinkResult, label: string) {
+  if (await copyToClipboard(link)) {
+    toast.success(`${label} link copied to clipboard. Send it to the manager.`);
+  } else {
+    toast.error('Could not copy automatically. Copy the link from the dialog.');
+    window.prompt(`${label} link — copy and send it to the manager:`, link);
+  }
 }
 
 export function useAdminManagers(page: number, enabled = true) {
@@ -59,8 +56,16 @@ export function useAdminManagers(page: number, enabled = true) {
     },
     onError: () => toast.error('Could not create manager'),
   });
-  const activate = useMutation({ mutationFn: adminService.activateManager, onSuccess: shareActionLink });
-  const recovery = useMutation({ mutationFn: adminService.recoveryPassword, onSuccess: shareActionLink });
+  const activate = useMutation({
+    mutationFn: adminService.activateManager,
+    onSuccess: (result) => shareActionLink(result, 'Activation'),
+    onError: () => toast.error('Could not create activation link. Please try again.'),
+  });
+  const recovery = useMutation({
+    mutationFn: adminService.recoveryPassword,
+    onSuccess: (result) => shareActionLink(result, 'Password recovery'),
+    onError: () => toast.error('Could not create password recovery link. Please try again.'),
+  });
   const ban = useMutation({
     mutationFn: adminService.banUser,
     onSuccess: (user) => {

@@ -87,7 +87,10 @@ export default function AdminPage() {
       {createModalOpen && (
         <CreateManagerModal
           onClose={closeCreateModal}
-          onCreate={createManager}
+          onCreate={async (data) => {
+            await createManager(data);
+            await setPage(1);
+          }}
         />
       )}
     </>

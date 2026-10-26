@@ -24,7 +24,7 @@ Repository layout:
 
 ## Requirements
 
-- Node.js 20+
+- Node.js 20.19+ (or a newer supported LTS)
 - Docker + Docker Compose (only if you want a local MySQL) — or any reachable MySQL 8
 
 ## Quick start
@@ -35,9 +35,11 @@ cd api
 cp .env.example .env          # set DATABASE_URL (cloud RDS or local — see below)
 npm install
 npm run prisma:generate
+# For a fresh local database, complete the Local database steps below before starting.
+# The preloaded cloud database needs neither migrations nor an order import.
 npm run start:dev             # http://localhost:5050
 
-# 2. Frontend (new terminal)
+# 2. Frontend (new terminal, from the repository root)
 cd web
 cp .env.example .env.local    # NEXT_PUBLIC_API_URL=http://localhost:5050
 npm install
@@ -69,18 +71,27 @@ DATABASE_URL="mysql://reviewer:rev_5737ebb6b0694f137f41254e@crm-db.cniog8a4ytxr.
 
 ### Local database (optional alternative)
 
-To run against a local MySQL instead, start the bundled container, point
-`DATABASE_URL` at it, apply migrations, then import the orders:
+To run against a fresh local MySQL instead, install the backend dependencies as
+shown in Quick start, set `DATABASE_URL` in `api/.env` to
+`mysql://root:root@localhost:3306/crm_db`, then apply the existing migrations and
+import the orders before starting the backend:
 
 ```bash
 # from the repository root
-docker compose up -d
+docker compose up -d --wait
 
 # api/.env: DATABASE_URL="mysql://root:root@localhost:3306/crm_db"
 cd api
-npm run prisma:migrate
+npx prisma migrate deploy
+npm run db:import-orders          # verify the local target and current order count
 npm run db:import-orders -- --apply
+npm run start:dev
 ```
+
+The import should report `Imported 500 orders with verified Cyrillic data.`
+Backend startup then creates the default admin; log in to see the imported orders.
+The import replaces existing orders and deletes their comments, so use `--apply`
+only when you intend to replace those records. Users and groups are retained.
 
 `docker-compose.yml` defaults to `MYSQL_ROOT_PASSWORD=root` and
 `MYSQL_DATABASE=crm_db`. You can override them with environment variables if needed.
