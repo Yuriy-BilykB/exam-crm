@@ -15,6 +15,7 @@ export interface ManagerUser {
   isBanned: boolean;
   createdAt: string;
   lastLogin: string | null;
+  stats?: OrderStatItem[];
 }
 
 export interface ManagersResponse {
@@ -42,10 +43,6 @@ const adminService = {
     const { data } = await api.get<ManagersResponse>('/admin/managers', {
       params: { page, limit },
     });
-    return data;
-  },
-  async getManagerStats(managerId: string): Promise<OrderStatItem[]> {
-    const { data } = await api.get<OrderStatItem[]>(`/admin/managers/${managerId}/stats`);
     return data;
   },
   async createManager(body: CreateManagerBody): Promise<ManagerUser> {

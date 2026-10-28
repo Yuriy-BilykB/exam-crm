@@ -159,6 +159,10 @@ export class OrderService {
   }
 
   async update({ id, dto, currentUserId }: UpdateOrderType) {
+    if (!Object.values(dto).some((value) => value !== undefined)) {
+      throw new BadRequestException('At least one field must be provided');
+    }
+
     const order = await this.prisma.order.findUnique({ where: { id } });
 
     if (!order) {
@@ -178,7 +182,7 @@ export class OrderService {
     }
     const data: Prisma.OrderUncheckedUpdateManyInput = { ...dto };
 
-    if (dto.status === OrderStatusValues[1]) {
+    if (dto.status === OrderStatusValues[1] || dto.status === null) {
       data.managerId = null;
     }
 

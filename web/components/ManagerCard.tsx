@@ -2,7 +2,6 @@
 
 import { useCallback } from 'react';
 import type { ManagerUser } from '@/lib/api/admin.service';
-import { useManagerStats } from '@/hooks/admin/useManagerStats';
 import { statusLabel } from '@/lib/reference/lists';
 import { formatDate } from '@/lib/utils/dates';
 
@@ -21,7 +20,7 @@ export default function ManagerCard({
   onBan,
   onUnban,
 }: Props) {
-  const { data: stats = [] } = useManagerStats(manager.id);
+  const stats = manager.stats ?? [];
   const total = stats.reduce((acc, s) => acc + s.count, 0);
   const isAdmin = manager.role === 'admin';
 

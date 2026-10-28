@@ -53,19 +53,19 @@ After installation and configuration above, run these commands **from `api/`**:
 # api/.env must use DATABASE_URL="mysql://root:root@localhost:3306/crm_db"
 docker compose -f ../docker-compose.yml up -d --wait
 npx prisma migrate deploy
-npm run db:import-orders          # verify the local target and current order count
-npm run db:import-orders -- --apply
+npm run db:seed
 npm run start:dev
 ```
 
-The import should report `Imported 500 orders with verified Cyrillic data.`
-Backend startup creates the default admin. Log in through the frontend to see the
-orders; migrations and startup alone do not import them. The container defaults to
+The seed creates the default admin and imports 500 orders when the orders table is
+empty. Log in through the frontend to see the orders; migrations and startup alone
+do not import them. The container defaults to
 `MYSQL_ROOT_PASSWORD=root` and `MYSQL_DATABASE=crm_db`; if you override these,
 update `DATABASE_URL` to match.
 
-The import replaces existing orders and deletes their comments. Use `--apply`
-only when you intend to replace those records; users and groups are retained.
+The seed skips the import when orders already exist. To replace existing orders,
+use the dedicated import command below; it deletes comments on replaced orders,
+while users and groups are retained.
 See [Import legacy orders](#import-legacy-orders) for details.
 
 ## Running

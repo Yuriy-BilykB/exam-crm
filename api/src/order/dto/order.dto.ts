@@ -20,6 +20,9 @@ import {
   OrderStatusValues,
 } from '../../common/enums';
 
+const noHtmlMarkup = /^[^<>]*$/;
+const noHtmlMarkupMessage = '$property must not contain HTML markup';
+
 export class OrderListQueryDto {
   @IsOptional()
   @Type(() => Number)
@@ -127,11 +130,26 @@ export class UpdateOrderDto {
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  @Matches(/^[^<>]*$/, { message: 'name must not contain HTML markup' })
+  @Matches(noHtmlMarkup, { message: noHtmlMarkupMessage })
   name?: string | null;
-  @Trim() @IsOptional() @IsString() @MaxLength(100) surname?: string | null;
-  @Trim() @IsOptional() @IsEmail() @MaxLength(150) email?: string | null;
-  @Trim() @IsOptional() @IsString() @MaxLength(40) phone?: string | null;
+  @Trim()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Matches(noHtmlMarkup, { message: noHtmlMarkupMessage })
+  surname?: string | null;
+  @Trim()
+  @IsOptional()
+  @IsEmail()
+  @MaxLength(150)
+  @Matches(noHtmlMarkup, { message: noHtmlMarkupMessage })
+  email?: string | null;
+  @Trim()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  @Matches(noHtmlMarkup, { message: noHtmlMarkupMessage })
+  phone?: string | null;
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -139,12 +157,28 @@ export class UpdateOrderDto {
   @Max(2147483647)
   age?: number | null;
 
-  @IsOptional() @IsIn(CourseValues) course?: string | null;
-  @IsOptional() @IsIn(CourseFormatValues) courseFormat?: string | null;
-  @IsOptional() @IsIn(CourseTypeValues) courseType?: string | null;
-  @IsOptional() @IsIn(OrderStatusValues) status?: string | null;
+  @IsOptional()
+  @IsIn(CourseValues)
+  @Matches(noHtmlMarkup, { message: noHtmlMarkupMessage })
+  course?: string | null;
+  @IsOptional()
+  @IsIn(CourseFormatValues)
+  @Matches(noHtmlMarkup, { message: noHtmlMarkupMessage })
+  courseFormat?: string | null;
+  @IsOptional()
+  @IsIn(CourseTypeValues)
+  @Matches(noHtmlMarkup, { message: noHtmlMarkupMessage })
+  courseType?: string | null;
+  @IsOptional()
+  @IsIn(OrderStatusValues)
+  @Matches(noHtmlMarkup, { message: noHtmlMarkupMessage })
+  status?: string | null;
 
-  @IsOptional() @IsString() @MaxLength(191) groupId?: string | null;
+  @IsOptional()
+  @IsString()
+  @MaxLength(191)
+  @Matches(noHtmlMarkup, { message: noHtmlMarkupMessage })
+  groupId?: string | null;
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -157,6 +191,16 @@ export class UpdateOrderDto {
   @Min(0)
   @Max(2147483647)
   alreadyPaid?: number | null;
-  @Trim() @IsOptional() @IsString() @MaxLength(255) utm?: string | null;
-  @Trim() @IsOptional() @IsString() @MaxLength(255) message?: string | null;
+  @Trim()
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  @Matches(noHtmlMarkup, { message: noHtmlMarkupMessage })
+  utm?: string | null;
+  @Trim()
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  @Matches(noHtmlMarkup, { message: noHtmlMarkupMessage })
+  message?: string | null;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { OrderDetail } from '@/services/orders.service';
 import { getApiErrorMessage } from '@/lib/api/errors';
@@ -56,6 +56,7 @@ export default function EditOrderModal({ order, onClose, onSaved }: Props) {
   const [newGroupName, setNewGroupName] = useState('');
 
   const {
+    control,
     register,
     handleSubmit,
     setValue,
@@ -73,7 +74,7 @@ export default function EditOrderModal({ order, onClose, onSaved }: Props) {
     }
     try {
       const group = await createGroup.mutateAsync(name);
-      setValue('groupId', String(group.id));
+      setValue('groupId', group.id, { shouldDirty: true, shouldValidate: true });
       setNewGroupName('');
     } catch (e) {
       setError('root', { message: getApiErrorMessage(e, 'Failed to add group') });
@@ -131,12 +132,18 @@ export default function EditOrderModal({ order, onClose, onSaved }: Props) {
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Group</label>
-                  <select {...register('groupId')} className={fieldClass}>
-                    <option value="">—</option>
-                    {groups.map((group) => (
-                      <option key={group.id} value={group.id}>{group.name}</option>
-                    ))}
-                  </select>
+                  <Controller
+                    name="groupId"
+                    control={control}
+                    render={({ field }) => (
+                      <select {...field} className={fieldClass}>
+                        <option value="">—</option>
+                        {groups.map((group) => (
+                          <option key={group.id} value={group.id}>{group.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  />
                   <div className="flex gap-2 mt-1">
                     <input
                       type="text"

@@ -35,7 +35,9 @@ export function useAdminManagers(page: number, enabled = true) {
         if (!prev) {return prev;}
         return {
           ...prev,
-          data: prev.data.map((m) => (m.id === updated.id ? updated : m)),
+          data: prev.data.map((m) =>
+            m.id === updated.id ? { ...m, ...updated, stats: m.stats } : m,
+          ),
         };
       },
     );
