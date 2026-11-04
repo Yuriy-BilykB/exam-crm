@@ -97,13 +97,19 @@ export class TokenService {
       expiresIn: ACTION_TOKEN_TTL,
       jwtid: randomUUID(),
     });
-    await this.prisma.activationToken.create({
-      data: {
-        token: hashActionToken(token),
-        type: tokenType,
-        expiresAt: new Date(Date.now() + ACTION_TOKEN_TTL_MS),
-        userId,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`;
+      await tx.activationToken.deleteMany({
+        where: { userId, type: tokenType },
+      });
+      await tx.activationToken.create({
+        data: {
+          token: hashActionToken(token),
+          type: tokenType,
+          expiresAt: new Date(Date.now() + ACTION_TOKEN_TTL_MS),
+          userId,
+        },
+      });
     });
     return token;
   }

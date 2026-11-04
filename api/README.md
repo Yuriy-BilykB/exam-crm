@@ -23,8 +23,8 @@ npm install
    ```
 2. Fill in `.env`:
    - `DATABASE_URL` — MySQL connection string. Use the AWS RDS connection from the
-     [root README](../README.md#database), or
-     `mysql://root:root@localhost:3306/crm_db` for the bundled local container
+     [root README](../README.md#database). For local MySQL, follow the
+     [local database setup](../README.md#local-database-optional-alternative)
    - `JWT_SECRET`, `JWT_REFRESH_SECRET` — token signing secrets. The example file includes development-only values; replace them outside local dev
    - `FRONTEND_URL` — used for CORS and generated activation/recovery links (default `http://localhost:3000`)
    - `COOKIE_SECURE` — set to `true` behind HTTPS
@@ -47,26 +47,10 @@ are unnecessary for this existing database.
 
 ### Fresh local database
 
-After installation and configuration above, run these commands **from `api/`**:
-
-```bash
-# api/.env must use DATABASE_URL="mysql://root:root@localhost:3306/crm_db"
-docker compose -f ../docker-compose.yml up -d --wait
-npx prisma migrate deploy
-npm run db:seed
-npm run start:dev
-```
-
-The seed creates the default admin and imports 500 orders when the orders table is
-empty. Log in through the frontend to see the orders; migrations and startup alone
-do not import them. The container defaults to
-`MYSQL_ROOT_PASSWORD=root` and `MYSQL_DATABASE=crm_db`; if you override these,
-update `DATABASE_URL` to match.
-
-The seed skips the import when orders already exist. To replace existing orders,
-use the dedicated import command below; it deletes comments on replaced orders,
-while users and groups are retained.
-See [Import legacy orders](#import-legacy-orders) for details.
+Follow the [local database setup in the root README](../README.md#local-database-optional-alternative).
+It is the single setup guide for the bundled MySQL container, connection string,
+migrations, and initial import of 500 orders. Backend startup creates the default
+admin; migrations and startup alone do not import orders.
 
 ## Running
 
@@ -150,5 +134,6 @@ Course/format/type/status values are not served by their own endpoints — they'
 Tables: `users`, `orders`, `comments`, `groups`, `activation_tokens`.
 
 Schema changes are managed with Prisma Migrate (`prisma/migrations`), not schema
-sync. Apply checked-in migrations with `npx prisma migrate deploy`, as shown
-above. `npm run prisma:migrate` is for developing new schema changes.
+sync. Apply checked-in migrations with `npx prisma migrate deploy`, as shown in the
+[local database setup](../README.md#local-database-optional-alternative).
+`npm run prisma:migrate` is for developing new schema changes.
