@@ -185,6 +185,12 @@ export class TokenService {
       jwtid: randomUUID(),
     });
     await this.prisma.$transaction(async (tx) => {
+      // Prisma has no dedicated SELECT ... FOR UPDATE API, so raw SQL locks this
+      // user's row until the transaction commits or rolls back. Concurrent token
+      // generation for the same user waits, keeping delete-and-create sequential.
+      // We chose this approach over a composite unique index on (userId, type)
+      // with upsert/conflict handling. A unique index prevents duplicate rows;
+      // this lock serializes cooperating operations, including password changes.
       await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`;
       await tx.activationToken.deleteMany({
         where: { userId, type: tokenType },
