@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { AppConfigService } from '../config/app-config.service';
 import { PrismaService } from '../database/prisma.service';
 
@@ -19,8 +19,13 @@ export type AccessTokenPayload = {
   tokenUse: 'access';
   userId: string;
   role: string;
+  sessionId: string;
 };
-export type RefreshTokenPayload = { tokenUse: 'refresh'; userId: string };
+export type RefreshTokenPayload = {
+  tokenUse: 'refresh';
+  userId: string;
+  sessionId: string;
+};
 export type ActionTokenPayload = {
   tokenUse: 'action';
   tokenType: TokenType;
@@ -32,10 +37,6 @@ const REFRESH_TOKEN_TTL = '7d';
 const ACTION_TOKEN_TTL = '30m';
 const ACTION_TOKEN_TTL_MS = 30 * 60 * 1000;
 
-export function hashActionToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
-}
-
 @Injectable()
 export class TokenService {
   constructor(
@@ -44,14 +45,19 @@ export class TokenService {
     private readonly prisma: PrismaService,
   ) {}
 
-  generateAuthTokens(user: { id: string; role: string }): AuthTokens {
+  generateAuthTokens(
+    user: { id: string; role: string },
+    sessionId: string,
+  ): AuthTokens {
     const accessPayload: AccessTokenPayload = {
       tokenUse: 'access',
+      sessionId,
       userId: user.id,
       role: user.role,
     };
     const refreshPayload: RefreshTokenPayload = {
       tokenUse: 'refresh',
+      sessionId,
       userId: user.id,
     };
     const accessToken = this.jwtService.sign(accessPayload, {
@@ -60,8 +66,83 @@ export class TokenService {
     const refreshToken = this.jwtService.sign(refreshPayload, {
       secret: this.config.jwtRefreshSecret,
       expiresIn: REFRESH_TOKEN_TTL,
+      jwtid: randomUUID(),
     });
     return { accessToken, refreshToken };
+  }
+
+  async createSession(
+    user: { id: string; role: string },
+    passwordHash: string,
+  ): Promise<AuthTokens> {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${user.id} FOR UPDATE`;
+      const current = await tx.user.findUnique({
+        where: { id: user.id },
+        omit: { password: false },
+      });
+      if (
+        !current ||
+        current.password !== passwordHash ||
+        current.isBanned ||
+        (!current.isActive && current.role !== 'admin')
+      ) {
+        throw new UnauthorizedException('User no longer allowed');
+      }
+      const sessionId = randomUUID();
+      const tokens = this.generateAuthTokens(current, sessionId);
+      await tx.session.create({
+        data: {
+          id: sessionId,
+          userId: current.id,
+          refreshToken: tokens.refreshToken,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      });
+      return tokens;
+    });
+  }
+
+  async rotateSession(refreshToken: string | undefined) {
+    const { userId, sessionId } = this.verifyRefreshToken(refreshToken);
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`;
+      const user = await tx.user.findUnique({ where: { id: userId } });
+      if (!user || user.isBanned || (!user.isActive && user.role !== 'admin')) {
+        throw new UnauthorizedException('User no longer allowed');
+      }
+      const tokens = this.generateAuthTokens(user, sessionId);
+      const { count } = await tx.session.updateMany({
+        where: {
+          id: sessionId,
+          userId,
+          refreshToken: refreshToken!,
+          expiresAt: { gt: new Date() },
+        },
+        data: {
+          refreshToken: tokens.refreshToken,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      });
+      if (count !== 1)
+        throw new UnauthorizedException(
+          'Session expired or refresh token already used',
+        );
+      return { ...tokens, user };
+    });
+  }
+
+  async revokeSession(refreshToken: string | undefined): Promise<void> {
+    if (!refreshToken) return;
+    let payload: RefreshTokenPayload;
+    try {
+      payload = this.verifyRefreshToken(refreshToken);
+    } catch {
+      return;
+    }
+    await this.prisma.session.deleteMany({
+      where: { id: payload.sessionId, userId: payload.userId },
+    });
   }
 
   verifyRefreshToken(refreshToken: string | undefined): RefreshTokenPayload {
@@ -75,7 +156,13 @@ export class TokenService {
           secret: this.config.jwtRefreshSecret,
         },
       );
-      if (payload.tokenUse !== 'refresh' || !payload.userId) {
+      if (
+        payload.tokenUse !== 'refresh' ||
+        typeof payload.userId !== 'string' ||
+        !payload.userId ||
+        typeof payload.sessionId !== 'string' ||
+        !payload.sessionId
+      ) {
         throw new UnauthorizedException('Invalid refresh token');
       }
       return payload;
@@ -104,7 +191,7 @@ export class TokenService {
       });
       await tx.activationToken.create({
         data: {
-          token: hashActionToken(token),
+          token: token,
           type: tokenType,
           expiresAt: new Date(Date.now() + ACTION_TOKEN_TTL_MS),
           userId,

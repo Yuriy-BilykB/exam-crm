@@ -1,11 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UserService } from '../user/user.service';
-import {
-  TokenService,
-  AuthTokens,
-  hashActionToken,
-} from '../token/token.service';
+import { TokenService, AuthTokens } from '../token/token.service';
 import { PrismaService } from '../database/prisma.service';
 import { UserRole } from '../common/enums';
 import { LoginDto, SetPasswordDto } from './dto/auth.dto';
@@ -26,7 +22,7 @@ export class AuthService {
   async validateUser(
     email: string,
     password: string,
-  ): Promise<UserResponse | null> {
+  ): Promise<(UserResponse & { password: string }) | null> {
     const user = await this.userService.findByEmail(email);
     if (!user) {
       return null;
@@ -44,7 +40,7 @@ export class AuthService {
     if (!user.isActive && user.role !== UserRole.ADMIN) {
       throw new UnauthorizedException('User is not activated');
     }
-    return user;
+    return { ...user, password: user.password };
   }
 
   async login({ email, password }: LoginDto): Promise<LoginResult> {
@@ -53,18 +49,19 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
     const updatedUser = await this.userService.touchLastLogin(user.id);
-    const tokens = this.tokenService.generateAuthTokens(updatedUser);
+    const tokens = await this.tokenService.createSession(
+      updatedUser,
+      user.password,
+    );
     return { ...tokens, user: updatedUser };
   }
 
   async refreshTokens(refreshToken: string | undefined): Promise<LoginResult> {
-    const { userId } = this.tokenService.verifyRefreshToken(refreshToken);
-    const user = await this.userService.findOne(userId);
-    if (!user || user.isBanned) {
-      throw new UnauthorizedException('User no longer allowed');
-    }
-    const tokens = this.tokenService.generateAuthTokens(user);
-    return { ...tokens, user };
+    return this.tokenService.rotateSession(refreshToken);
+  }
+
+  async logout(refreshToken: string | undefined): Promise<void> {
+    await this.tokenService.revokeSession(refreshToken);
   }
 
   async getProfile(userId: string): Promise<UserResponse> {
@@ -80,9 +77,10 @@ export class AuthService {
     const { tokenType, userId } = this.tokenService.verifyActionToken(token);
     const passwordHash = await bcrypt.hash(password, 10);
     await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`;
       const { count } = await tx.activationToken.deleteMany({
         where: {
-          token: hashActionToken(token),
+          token: token,
           type: tokenType,
           userId,
           expiresAt: { gt: new Date() },
@@ -91,6 +89,8 @@ export class AuthService {
       if (count !== 1) {
         throw new UnauthorizedException('Token expired or already used');
       }
+      await tx.session.deleteMany({ where: { userId } });
+      await tx.activationToken.deleteMany({ where: { userId } });
       await tx.user.update({
         where: { id: userId },
         data: {

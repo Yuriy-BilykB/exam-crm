@@ -52,7 +52,11 @@ export class AuthController {
   }
 
   @Post('logout')
-  logout(@Res({ passthrough: true }) res: Response) {
+  async logout(
+    @Cookies(refreshCookieKey) refreshCookie: string | undefined,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.logout(refreshCookie);
     res.clearCookie(refreshCookieKey, {
       ...this.config.refreshCookieOptions,
       maxAge: undefined,

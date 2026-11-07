@@ -24,14 +24,25 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       payload?.tokenUse !== 'access' ||
       typeof payload.userId !== 'string' ||
       !payload.userId ||
+      typeof payload.sessionId !== 'string' ||
+      !payload.sessionId ||
       (payload.role !== UserRole.ADMIN && payload.role !== UserRole.MANAGER)
     ) {
       throw new UnauthorizedException('Invalid access token');
     }
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.userId },
-      select: { id: true, role: true, isActive: true, isBanned: true },
+    const session = await this.prisma.session.findFirst({
+      where: {
+        id: payload.sessionId,
+        userId: payload.userId,
+        expiresAt: { gt: new Date() },
+      },
+      select: {
+        user: {
+          select: { id: true, role: true, isActive: true, isBanned: true },
+        },
+      },
     });
+    const user = session?.user;
     if (
       !user ||
       user.isBanned ||

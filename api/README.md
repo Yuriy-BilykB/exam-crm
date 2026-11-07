@@ -141,3 +141,13 @@ Schema changes are managed with Prisma Migrate (`prisma/migrations`), not schema
 sync. Apply checked-in migrations with `npx prisma migrate deploy`, as shown in the
 [local database setup](../README.md#local-database-optional-alternative).
 `npm run prisma:migrate` is for developing new schema changes.
+
+## Database-backed authentication sessions
+
+Each login creates an independent session. The refresh token is stored as a JWT
+in the database. Refresh atomically replaces that token; a previously consumed
+refresh token is rejected. Logout removes the current session. Password setup or
+recovery removes all of the user's sessions and remaining action tokens in the
+same transaction as the password change. Access-token authentication checks the
+session on every request, so removed and expired sessions are rejected immediately.
+Expired session rows can be periodically deleted using their `expires_at` field.
