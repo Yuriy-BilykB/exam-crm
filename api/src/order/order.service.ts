@@ -5,6 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
+import { createWriteStream } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { PrismaService } from '../database/prisma.service';
 import { UpdateOrderDto, OrderListQueryDto } from './dto/order.dto';
 import type { Prisma } from '../generated/prisma/client';
@@ -205,48 +209,84 @@ export class OrderService {
   async exportExcel(
     query: OrderListQueryDto,
     currentUserId: string,
-  ): Promise<Buffer> {
+  ): Promise<{ path: string; cleanup: () => Promise<void> }> {
     const where = this.buildWhere(query, currentUserId);
     const orderBy = this.buildOrderBy(
       query.sortBy,
       query.sortOrder === 'ASC' ? 'asc' : 'desc',
     );
-    const data = await this.prisma.order.findMany({
-      where,
-      select: ORDER_SELECT,
-      orderBy,
+    const directory = await mkdtemp(join(tmpdir(), 'crm-orders-'));
+    const path = join(directory, 'orders.xlsx');
+    const cleanup = () => rm(directory, { recursive: true, force: true });
+    const output = createWriteStream(path);
+    let outputError: Error | undefined;
+    output.on('error', (error) => {
+      outputError = error;
     });
-
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Orders');
-    sheet.columns = [
-      { header: 'ID', key: 'id', width: 10 },
-      { header: 'Name', key: 'name', width: 15 },
-      { header: 'Surname', key: 'surname', width: 15 },
-      { header: 'Email', key: 'email', width: 25 },
-      { header: 'Phone', key: 'phone', width: 15 },
-      { header: 'Age', key: 'age', width: 6 },
-      { header: 'Course', key: 'course', width: 10 },
-      { header: 'Format', key: 'courseFormat', width: 10 },
-      { header: 'Type', key: 'courseType', width: 12 },
-      { header: 'Status', key: 'status', width: 12 },
-      { header: 'Manager', key: 'manager', width: 15 },
-      { header: 'Group', key: 'group', width: 15 },
-      { header: 'Sum', key: 'sum', width: 10 },
-      { header: 'Already Paid', key: 'alreadyPaid', width: 12 },
-      { header: 'Created At', key: 'createdAt', width: 20 },
-    ];
-    for (const order of data) {
-      sheet.addRow({
-        ...order,
-        course: order.course ?? '',
-        courseFormat: order.courseFormat ?? '',
-        courseType: order.courseType ?? '',
-        status: order.status ?? '',
-        manager: order.manager?.name ?? '',
-        group: order.group?.name ?? '',
-      });
+    const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+      stream: output,
+      useSharedStrings: false,
+      useStyles: false,
+    });
+    try {
+      const sheet = workbook.addWorksheet('Orders');
+      sheet.columns = [
+        { header: 'ID', key: 'id', width: 10 },
+        { header: 'Name', key: 'name', width: 15 },
+        { header: 'Surname', key: 'surname', width: 15 },
+        { header: 'Email', key: 'email', width: 25 },
+        { header: 'Phone', key: 'phone', width: 15 },
+        { header: 'Age', key: 'age', width: 6 },
+        { header: 'Course', key: 'course', width: 10 },
+        { header: 'Format', key: 'courseFormat', width: 10 },
+        { header: 'Type', key: 'courseType', width: 12 },
+        { header: 'Status', key: 'status', width: 12 },
+        { header: 'Manager', key: 'manager', width: 15 },
+        { header: 'Group', key: 'group', width: 15 },
+        { header: 'Sum', key: 'sum', width: 10 },
+        { header: 'Already Paid', key: 'alreadyPaid', width: 12 },
+        { header: 'Created At', key: 'createdAt', width: 20 },
+      ];
+      await this.prisma.$transaction(
+        async (tx) => {
+          const batchSize = 1000;
+          let offset = 0;
+          while (true) {
+            if (outputError) throw outputError;
+            const data = await tx.order.findMany({
+              where,
+              select: ORDER_SELECT,
+              orderBy: [orderBy, { id: 'asc' }],
+              skip: offset,
+              take: batchSize,
+            });
+            for (const order of data) {
+              sheet
+                .addRow({
+                  ...order,
+                  course: order.course ?? '',
+                  courseFormat: order.courseFormat ?? '',
+                  courseType: order.courseType ?? '',
+                  status: order.status ?? '',
+                  manager: order.manager?.name ?? '',
+                  group: order.group?.name ?? '',
+                })
+                .commit();
+            }
+            if (data.length < batchSize) break;
+            offset += data.length;
+          }
+        },
+        { isolationLevel: 'RepeatableRead', timeout: 120000 },
+      );
+      sheet.commit();
+      await workbook.commit();
+      if (outputError) throw outputError;
+      return { path, cleanup };
+    } catch (error) {
+      output.destroy();
+      await cleanup();
+      throw error;
     }
-    return Buffer.from(await workbook.xlsx.writeBuffer());
   }
 }

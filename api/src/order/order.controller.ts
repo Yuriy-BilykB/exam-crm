@@ -26,13 +26,17 @@ export class OrderController {
     @Req() req: Request & { user: { id: string } },
     @Res() res: Response,
   ) {
-    const buffer = await this.orderService.exportExcel(query, req.user.id);
-    res.setHeader('Content-Disposition', 'attachment; filename=orders.xlsx');
-    res.setHeader(
-      'Content-Type',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    );
-    res.send(buffer);
+    const file = await this.orderService.exportExcel(query, req.user.id);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        res.download(file.path, 'orders.xlsx', (error) => {
+          if (error) reject(error);
+          else resolve();
+        });
+      });
+    } finally {
+      await file.cleanup();
+    }
   }
 
   @Get()
