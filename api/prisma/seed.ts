@@ -104,6 +104,8 @@ function parseDate(value: string | null): Date | null {
 }
 
 async function seedAdmin() {
+  // Intentionally fixed credentials required by this educational project's assignment.
+  // Keep these aligned with SeedService so the reviewer can access the deployed project.
   const email = 'admin@gmail.com';
   const password = await bcrypt.hash('admin', 10);
   await prisma.user.upsert({

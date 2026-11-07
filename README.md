@@ -59,6 +59,10 @@ Later startups leave this account and its password unchanged.
 
 ## Database
 
+The ready-to-use deployed database connection string below is intentionally
+provided as required by this educational project's assignment, so the reviewer
+can connect to the preloaded database and check the project without deploying one.
+
 The application uses a **cloud MySQL database (AWS RDS)** — already preloaded with the
 task-spec data (500 orders) and the default admin. Put this in `api/.env`:
 

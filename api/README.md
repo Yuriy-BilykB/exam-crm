@@ -40,6 +40,10 @@ npm install
 
 ### Preloaded cloud database (AWS RDS)
 
+The ready-to-use deployed database connection string in the root README is
+intentionally shared as required by this educational project's assignment,
+so the reviewer can check the project against the preloaded database.
+
 Set the AWS RDS `DATABASE_URL` from the [root README](../README.md#database) in
 `api/.env`. This MySQL 8 database already contains the schema, 500 task-spec orders,
 and the default admin. Start the backend directly; migrations and an order import

@@ -2,6 +2,8 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { UserRole } from '../common/enums';
 
+// Intentionally fixed credentials required by this educational project's assignment.
+// The reviewer uses this account to check the deployed project with the provided database.
 const adminEmail = 'admin@gmail.com';
 const adminPassword = 'admin';
 
