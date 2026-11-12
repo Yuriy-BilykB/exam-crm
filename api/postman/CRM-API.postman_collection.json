@@ -375,18 +375,6 @@
           }
         },
         {
-          "name": "Manager stats",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/admin/managers/{{managerId}}/stats",
-              "host": ["{{baseUrl}}"],
-              "path": ["admin", "managers", "{{managerId}}", "stats"]
-            }
-          }
-        },
-        {
           "name": "Activate manager",
           "request": {
             "method": "POST",

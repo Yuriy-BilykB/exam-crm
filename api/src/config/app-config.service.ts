@@ -23,13 +23,6 @@ export const localEnv = z.object({
   JWT_REFRESH_SECRET: z.string().min(1),
 
   COOKIE_SECURE: boolFromString,
-
-  MAIL_FROM: z.string().default('CRM <no-reply@crm.local>'),
-  SMTP_HOST: z.string().default(''),
-  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
-  SMTP_SECURE: boolFromString,
-  SMTP_USER: z.string().default(''),
-  SMTP_PASS: z.string().default(''),
 });
 
 export type LocalEnv = z.infer<typeof localEnv>;
@@ -79,29 +72,5 @@ export class AppConfigService {
 
   get refreshCookieOptions(): CookieOptions {
     return buildRefreshCookieOptions(this.cookieSecure);
-  }
-
-  get mailFrom(): string {
-    return this.configService.get('MAIL_FROM');
-  }
-
-  get smtpHost(): string {
-    return this.configService.get('SMTP_HOST');
-  }
-
-  get smtpPort(): number {
-    return this.configService.get('SMTP_PORT');
-  }
-
-  get smtpSecure(): boolean {
-    return this.configService.get('SMTP_SECURE');
-  }
-
-  get smtpUser(): string {
-    return this.configService.get('SMTP_USER');
-  }
-
-  get smtpPass(): string {
-    return this.configService.get('SMTP_PASS');
   }
 }

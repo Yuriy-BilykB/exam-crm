@@ -29,7 +29,6 @@ npm install
    - `FRONTEND_URL` — used for CORS and generated activation/recovery links (default `http://localhost:3000`)
    - `COOKIE_SECURE` — set to `true` behind HTTPS
    - `PORT` — API port (default `5050`)
-   - `SMTP_*`, `MAIL_FROM` — mail sending (currently disabled in code; safe to leave empty)
 3. Generate the Prisma client:
    ```bash
    npm run prisma:generate
@@ -125,7 +124,6 @@ migration history are retained.
 | GET | /admin/stats | Order counts grouped by status (admin only) |
 | GET | /admin/managers | List managers/admins (pagination, admin only) |
 | POST | /admin/managers | Create a manager |
-| GET | /admin/managers/:id/stats | Order stats for one manager |
 | POST | /admin/managers/:id/activate | Get an activation link |
 | POST | /admin/managers/:id/recovery | Get a password-recovery link |
 | POST | /admin/managers/:id/ban | Ban a user |

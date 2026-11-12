@@ -6,15 +6,13 @@ import {
 import { UserService } from '../user/user.service';
 import { TokenService } from '../token/token.service';
 import { PrismaService } from '../database/prisma.service';
-// Email sending temporarily disabled.
-// import { MailService } from '../mail/mail.service';
 import { CreateManagerDto } from '../user/dto/user.dto';
 import { OrderStatusValues, UserRole } from '../common/enums';
 import { AppConfigService } from '../config/app-config.service';
 import type { Prisma } from '../generated/prisma/client';
 import { ManagerStatsResponse, ResponseDtoManagers } from './dto/response.dto';
 
-type ActivateManagerResponse = { link: string; emailSent: boolean };
+type ActionLinkResponse = { link: string };
 
 @Injectable()
 export class AdminService {
@@ -23,8 +21,6 @@ export class AdminService {
     private readonly tokenService: TokenService,
     private readonly prisma: PrismaService,
     private readonly config: AppConfigService,
-    // Email sending temporarily disabled.
-    // private readonly mailService: MailService,
   ) {}
 
   async createManager(dto: CreateManagerDto) {
@@ -92,7 +88,7 @@ export class AdminService {
     return `${baseUrl.replace(/\/$/, '')}/${tokenType}/${token}`;
   }
 
-  async activateManager(userId: string): Promise<ActivateManagerResponse> {
+  async activateManager(userId: string): Promise<ActionLinkResponse> {
     const user = await this.userService.findOne(userId);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -101,28 +97,14 @@ export class AdminService {
       throw new NotFoundException('Not a manager');
     }
     const link = await this.getActivationLink(userId, 'activate');
-    // Email sending temporarily disabled — the link is copied to clipboard on the client.
-    // const emailSent = await this.mailService.sendActionLink(
-    //   user.email,
-    //   link,
-    //   'activate',
-    // );
-    const emailSent = false;
-    return { link, emailSent };
+    return { link };
   }
 
-  async recoveryPassword(userId: string): Promise<ActivateManagerResponse> {
+  async recoveryPassword(userId: string): Promise<ActionLinkResponse> {
     const user = await this.userService.findOne(userId);
     if (!user) throw new NotFoundException('User not found');
     const link = await this.getActivationLink(userId, 'recovery');
-    // Email sending temporarily disabled — the link is copied to clipboard on the client.
-    // const emailSent = await this.mailService.sendActionLink(
-    //   user.email,
-    //   link,
-    //   'recovery',
-    // );
-    const emailSent = false;
-    return { link, emailSent };
+    return { link };
   }
 
   async banManager(userId: string, adminId: string) {
@@ -136,12 +118,9 @@ export class AdminService {
     return await this.userService.update(userId, { isBanned: false });
   }
 
-  private async managerStatsByStatus(
-    where?: Prisma.OrderWhereInput,
-  ): Promise<ManagerStatsResponse[]> {
+  async getManagerStatsByStatus(): Promise<ManagerStatsResponse[]> {
     const grouped = await this.prisma.order.groupBy({
       by: ['status'],
-      where,
       _count: { _all: true },
     });
 
@@ -156,13 +135,5 @@ export class AdminService {
       statusName,
       count: counts.get(statusName) ?? 0,
     }));
-  }
-
-  getManagerStatsByStatus() {
-    return this.managerStatsByStatus();
-  }
-
-  getManagerStats(managerId: string) {
-    return this.managerStatsByStatus({ managerId });
   }
 }

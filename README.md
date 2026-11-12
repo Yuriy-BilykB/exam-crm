@@ -110,6 +110,8 @@ credentials are pre-filled) — the access token is captured into a collection v
 automatically, and every other request inherits `Bearer {{accessToken}}`. Adjust the
 `baseUrl` variable if the API runs elsewhere.
 
+Activation and password recovery return a link that the frontend copies to the clipboard.
+
 ## Environment variables
 
 Backend env vars are validated on startup by a Zod schema
@@ -129,7 +131,6 @@ development-only JWT values, so after copying it you normally only need to fill 
 | `FRONTEND_URL` | Frontend URL, used for CORS and activation/recovery links |
 | `JWT_SECRET` / `JWT_REFRESH_SECRET` | Secrets for access / refresh tokens. Required; `api/.env.example` includes development-only values |
 | `COOKIE_SECURE` | `true` only when served over HTTPS (marks the refresh cookie `Secure`). Leave `false` on plain HTTP |
-| `SMTP_*`, `MAIL_FROM` | Mail settings are currently unused because email sending is disabled in code. Activation and recovery endpoints return a link with `emailSent: false`; the frontend copies that link to the clipboard for the admin to share manually |
 
 ### `web/.env.local` (see `web/.env.example`)
 

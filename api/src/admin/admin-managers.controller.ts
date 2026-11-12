@@ -31,11 +31,6 @@ export class AdminManagersController {
     return this.adminService.getManagers(page, limit);
   }
 
-  @Get(':id/stats')
-  managerStats(@Param('id') id: string) {
-    return this.adminService.getManagerStats(id);
-  }
-
   @Post(':id/activate')
   activateManager(@Param('id') id: string) {
     return this.adminService.activateManager(id);

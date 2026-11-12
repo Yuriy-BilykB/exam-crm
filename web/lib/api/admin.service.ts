@@ -31,7 +31,6 @@ export interface CreateManagerBody {
 
 export interface ActionLinkResult {
   link: string;
-  emailSent: boolean;
 }
 
 const adminService = {
