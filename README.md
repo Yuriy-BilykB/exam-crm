@@ -36,7 +36,6 @@ cp .env.example .env          # set DATABASE_URL (cloud RDS or local — see bel
 npm install
 npm run prisma:generate
 # For a fresh local database, complete the Local database steps below before starting.
-# The preloaded cloud database needs neither migrations nor an order import.
 npm run start:dev             # http://localhost:5050
 
 # 2. Frontend (new terminal, from the repository root)
@@ -58,6 +57,11 @@ Later startups leave this account and its password unchanged.
 > API for `FRONTEND_URL`.
 
 ## Database
+
+When updating an existing deployment, stop the old API before running
+`npx prisma migrate deploy` from `api/`, then start the updated API. The token
+migration hashes existing session, activation, and recovery tokens in place so
+valid cookies and links can still be used.
 
 The ready-to-use deployed database connection string below is intentionally
 provided as required by this educational project's assignment, so the reviewer

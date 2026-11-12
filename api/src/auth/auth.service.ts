@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UserService } from '../user/user.service';
 import { TokenService, AuthTokens } from '../token/token.service';
+import { hashToken } from '../token/token-hash';
 import { PrismaService } from '../database/prisma.service';
 import { UserRole } from '../common/enums';
 import { LoginDto, SetPasswordDto } from './dto/auth.dto';
@@ -80,7 +81,7 @@ export class AuthService {
       await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`;
       const { count } = await tx.activationToken.deleteMany({
         where: {
-          token: token,
+          token: hashToken(token),
           type: tokenType,
           userId,
           expiresAt: { gt: new Date() },

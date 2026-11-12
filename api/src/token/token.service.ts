@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'node:crypto';
 import { AppConfigService } from '../config/app-config.service';
 import { PrismaService } from '../database/prisma.service';
+import { hashToken } from './token-hash';
 
 export type TokenType = 'activate' | 'recovery';
 
@@ -95,7 +96,7 @@ export class TokenService {
         data: {
           id: sessionId,
           userId: current.id,
-          refreshToken: tokens.refreshToken,
+          refreshToken: hashToken(tokens.refreshToken),
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
       });
@@ -116,11 +117,11 @@ export class TokenService {
         where: {
           id: sessionId,
           userId,
-          refreshToken: refreshToken!,
+          refreshToken: hashToken(refreshToken!),
           expiresAt: { gt: new Date() },
         },
         data: {
-          refreshToken: tokens.refreshToken,
+          refreshToken: hashToken(tokens.refreshToken),
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
       });
@@ -197,7 +198,7 @@ export class TokenService {
       });
       await tx.activationToken.create({
         data: {
-          token: token,
+          token: hashToken(token),
           type: tokenType,
           expiresAt: new Date(Date.now() + ACTION_TOKEN_TTL_MS),
           userId,
